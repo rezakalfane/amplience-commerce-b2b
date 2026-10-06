@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   description: "A B2B storefront powered by Amplience and BigCommerce.",
 };
 
+/** The time travel preload runs after the response (see lib/timeline.ts); give the function room to finish it. */
+export const maxDuration = 300;
+
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));
 }

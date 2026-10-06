@@ -103,6 +103,12 @@ the slider (`TimeVariants`, `TimeSwitch`); the server only syncs after the user 
 **Rejected.** Transitions around each action (React batches overlapping ones and the page only updates when dragging stops);
 `router.refresh()` after the action (a second render per step).
 
+### D32. The timeline lives in the Runtime Cache, not in function memory
+**Decision.** Plan and states are stored in Vercel's Runtime Cache; builds are locked, resumable and replace the served plan only when complete.
+**Why.** Instances come and go and requests are spread across them: with in-memory state the progress bar jumped between a full and an
+empty timeline, builds died with the instance, and an expiring timeline made the page "unload".
+**Rejected.** A database or Blob store (extra infrastructure for ephemeral preview data); sticky instances (not available).
+
 ### D31. Edition names travel in the slot content
 **Decision.** `hero-slot.campaign` holds the name, set by the scheduler.
 **Why.** The storefront has no Management API access (and must not hold the PAT), and the Delivery API does not expose edition names.

@@ -51,10 +51,12 @@ so the whole site, including the slot's hero, shows what will be live then. In p
 
 While a session is pinned to a moment, every page shows a sticky **Time preview** banner (`components/time-preview-bar.tsx`):
 
-- the date and time being previewed, the **name of the edition / campaign** that is live then, and a reminder that the catalog
+- the date and time being previewed (fixed width, so the edition tag never moves), the **name of the edition / campaign** that is live then, and a reminder that the catalog
   and prices are live (only the content is time-pinned);
 - a **slider** (30 days back to a year ahead, hourly steps) and a **date/time field**;
-- **‹ ›** to jump to the previous / next change, **Now**, and **Exit time preview** (clears the pin, back to the latest saved content);
+- **‹ ›** to jump to the previous / next change, **− +** to zoom the timeline (the view starts fitted on the editions, 79 days here; steps
+  of 395 / 180 / 90 / 45 / 21 days around the current time; the visible span is shown above ›), **Now**, and **Exit time preview**
+  (clears the pin, back to the latest saved content);
 - on the slider, a **progress fill** while the time states are preloaded, then **change markers** and one **named band per
   edition** (hover for its name and dates);
 - areas whose content changes **blink with a dotted amber outline** for about two seconds (`components/change-flash.tsx`).
@@ -70,7 +72,7 @@ Content pinned to a moment only changes at a few instants (an Edition starting, 
 **preloads the timeline** instead of asking Amplience for every slider step.
 
 1. **Timeline** (`lib/timeline.ts`). The first pinned render registers the requests it makes (navigation, the page, lists).
-   In the background the server probes the slider's range at 15 instants and, wherever two neighbouring probes differ,
+   In the background (inside `after()`, so the function stays alive) the server probes the slider's range at 15 instants and, wherever two neighbouring probes differ,
    bisects down to the hour to find the exact change point. One probe loads *all* registered requests from one time-pinned
    host. The staging host rewrites some links to its own domain (which contains the timestamp), so that text is blanked
    before comparing. A gap between two probes becomes **resolved** as soon as it is known and is answered from memory at once,
@@ -92,8 +94,17 @@ Content pinned to a moment only changes at a few instants (an Edition starting, 
    the same area, even across variants, so only areas that really changed blink. An area that appears right after you moved the
    time (a hero whose slot just got content) blinks too; first paint never does.
 
-Changes shorter than the probe gap (about four weeks) can be missed, and a timeline expires after five minutes of the pin
-being unused. Everything here lives on preview deployments only; none of it exists in production.
+6. **Shared across instances.** On Vercel each request can reach a different function instance, so the timeline is stored in the
+   **Runtime Cache** (per-region, shared by all instances, separate for Production and Preview; an in-process map stands in
+   locally): a small *plan* (probed instants and the state hash each shows) plus one gzipped blob per distinct content *state*.
+   One instance builds at a time (a soft lock). A stale plan (older than 8 minutes) keeps serving while its replacement is built
+   under a separate key and swapped in only when complete, so the slider never "unloads". A build interrupted by the function's
+   time limit **resumes** from its stored progress, and the status polling restarts one that died. Any instance can load the
+   requests another registered, because the request key says what to fetch (`setResolver`).
+7. **Time to ready.** A page whose queries are light (home, FAQ) is ready in about 25 s; the blog (36 posts over three pages per
+   probe) takes about a minute. Until then the page works, one server round trip per step; once ready, nothing is requested.
+
+Changes shorter than the probe gap (about four weeks) can be missed. Everything here lives on preview deployments only; none of it exists in production.
 
 ## Safeguards
 

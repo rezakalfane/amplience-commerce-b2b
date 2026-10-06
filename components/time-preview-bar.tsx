@@ -37,6 +37,17 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
   const [ranges, setRanges] = useState<{ from: number; to: number; done: boolean }[]>([]);
   const min = now - 30 * DAY;
   const max = now + 365 * DAY;
+  // The slider shows a window of the full range (30 days back to a year ahead): zoom in to see the editions better.
+  const [win, setWin] = useState<{ from: number; to: number } | null>(null);
+  const userZoomed = useRef(false);
+  const view = win ?? { from: min, to: max };
+  const span = view.to - view.from;
+  const fit = (from: number, to: number) => {
+    // keep a window of that size inside the full range
+    if (to - from >= max - min) return null;
+    const shift = from < min ? min - from : to > max ? max - to : 0;
+    return { from: from + shift, to: to + shift };
+  };
 
   useEffect(() => {
     if (applied.current?.ts === initial) applied.current.done();
@@ -67,6 +78,7 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
   const move = (next: number) => {
     window.__timeTravelAt = Date.now(); // lets areas that appear because of this move blink too (components/change-flash.tsx)
     latest.current = next;
+    if (next < view.from || next > view.to) setWin(fit(next - span / 2, next + span / 2)); // re-centre the window on it
     setTs(next); // the label follows the thumb instantly
     timeStore.set({ ts: next }); // preloaded mode: the page switches to the matching time state right here, no request
     // The server only needs to catch up (cookie, layout, shareable URL state): quickly when it must render the content
@@ -80,6 +92,13 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
       .then((r) => {
         setMarkers(r.markers);
         setRanges(r.ranges);
+        // First time the change points are known: zoom onto the editions (unless the user already chose a zoom).
+        if (r.markers.length > 0 && !userZoomed.current) {
+          userZoomed.current = true;
+          const lo = Math.min(r.markers[0], latest.current) - 14 * DAY;
+          const hi = Math.max(r.markers[r.markers.length - 1], latest.current) + 14 * DAY;
+          setWin(fit(Math.max(min, lo), Math.min(max, hi)));
+        }
         const ready = r.ready;
         // Everything is preloaded: ask the server for the page once more so it comes back with one copy per time
         // state (components/time-variants.tsx); from then on, moving the slider needs no request at all.
@@ -110,7 +129,14 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
   const nextChange = markers.find((m) => m > ts);
   const startOfCurrent = [...markers].reverse().find((m) => m <= ts);
   const prevChange = startOfCurrent === undefined ? undefined : Math.max(min, startOfCurrent - HOUR);
-  const pct = (m: number) => (m - min) / (max - min);
+  const pct = (m: number) => (m - view.from) / span;
+  const zoom = (dir: 1 | -1) => {
+    const steps = [395, 180, 90, 45, 21].map((d) => d * DAY); // widest first
+    const next = dir > 0 ? steps.find((o) => o < span * 0.98) : [...steps].reverse().find((o) => o > span * 1.02);
+    if (next === undefined) return;
+    userZoomed.current = true;
+    setWin(fit(ts - next / 2, ts + next / 2));
+  };
 
   // Named stretches of time (editions / campaigns) from the preloaded page: bands above the slider, and the current name.
   // Names arrive with the preloaded page states; until then the stretches are known from the change points alone.
@@ -133,77 +159,95 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
           <span className="font-semibold">{labels.title}</span>
           <span className="text-white/60">·</span>
           <span className="hidden text-white/70 2xl:inline">{labels.hint}</span>
-          <strong className="tabular-nums">{when}</strong>
+          {/* The server formats in its own timezone, the browser in yours: only the text differs */}
+          <strong className="inline-block w-[13rem] tabular-nums" suppressHydrationWarning>
+            {when}
+          </strong>
           {current && <span className="rounded-full bg-amber/20 px-2 py-0.5 text-xs font-semibold text-amber">{current}</span>}
           <span className="hidden text-white/50 min-[1900px]:inline">· {labels.note}</span>
         </p>
 
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
-          <button type="button" aria-label={labels.prev} title={labels.prev} disabled={prevChange === undefined} onClick={() => prevChange !== undefined && move(prevChange)} className="rounded-[3px] border border-white/30 px-2 py-1 leading-none hover:bg-white/10 disabled:opacity-30">
-            ‹
-          </button>
-          <div className="relative flex items-center pt-3.5">
-            {/* Preload progress: stretches of time whose content is already known are amber */}
-            <div aria-hidden className="pointer-events-none absolute inset-x-2 top-[calc(50%+7px)] h-1 -translate-y-1/2 overflow-hidden rounded-full bg-white/15">
-              {ranges.map((r) => {
-                const from = Math.min(1, Math.max(0, pct(r.from)));
-                const to = Math.min(1, Math.max(0, pct(r.to)));
+          <div className="grid grid-cols-[auto_auto_auto] items-center gap-x-2 gap-y-1">
+            {/* row 1: zoom, the edition lane (one band per stretch of time between two content changes; hover for the name), zoom level */}
+            <div className="flex justify-center gap-1">
+              <button type="button" aria-label="Zoom out" title="Zoom out" disabled={span >= max - min - 1} onClick={() => zoom(-1)} className="h-5 w-5 rounded-[3px] border border-white/30 text-xs leading-none hover:bg-white/10 disabled:opacity-30">
+                −
+              </button>
+              <button type="button" aria-label="Zoom in" title="Zoom in" disabled={span <= 21 * DAY + 1} onClick={() => zoom(1)} className="h-5 w-5 rounded-[3px] border border-white/30 text-xs leading-none hover:bg-white/10 disabled:opacity-30">
+                +
+              </button>
+            </div>
+            <div className="relative mx-2 h-2.5 overflow-hidden">
+              {bands.map((b, i) => {
+                const from = Math.min(1, Math.max(0, pct(b.from)));
+                const to = Math.min(1, Math.max(0, pct(b.to)));
+                if (to <= from) return null;
+                const active = b.from <= ts && ts < b.to;
                 return (
                   <span
-                    key={r.from}
-                    className={`absolute inset-y-0 transition-colors duration-500 ${r.done ? "bg-amber" : ""}`}
+                    key={`${b.from}-${i}`}
+                    title={`${b.label ?? "Edition"} · ${b.standard && i === 0 ? "…" : short.format(b.from)} → ${i === bands.length - 1 ? "…" : short.format(b.to)}`}
+                    className={`absolute inset-y-0 rounded-[1px] border-r border-ink transition-opacity ${b.standard ? "bg-white/40" : TONES[i % TONES.length]} ${active ? "opacity-100" : "opacity-50 hover:opacity-90"}`}
                     style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%` }}
                   />
                 );
               })}
             </div>
-            {/* Editions / campaigns: one band per stretch of time between two content changes (hover for the name) */}
-            {bands.length > 0 && (
-              <div className="absolute inset-x-2 top-0 h-2.5">
-                {bands.map((b, i) => {
-                  const from = Math.min(1, Math.max(0, pct(b.from)));
-                  const to = Math.min(1, Math.max(0, pct(b.to)));
-                  const active = b.from <= ts && ts < b.to;
+            <span className="text-center text-[10px] tabular-nums text-white/50" title="Visible range">
+              {Math.round(span / DAY)} d
+            </span>
+
+            {/* row 2: previous change, the slider, next change */}
+            <button type="button" aria-label={labels.prev} title={labels.prev} disabled={prevChange === undefined} onClick={() => prevChange !== undefined && move(prevChange)} className="rounded-[3px] border border-white/30 px-2 py-1 leading-none hover:bg-white/10 disabled:opacity-30">
+              ‹
+            </button>
+            <div className="relative flex items-center">
+              {/* Preload progress: stretches of time whose content is already known are amber */}
+              <div aria-hidden className="pointer-events-none absolute inset-x-2 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-white/15">
+                {ranges.map((r) => {
+                  const from = Math.min(1, Math.max(0, pct(r.from)));
+                  const to = Math.min(1, Math.max(0, pct(r.to)));
                   return (
                     <span
-                      key={`${b.from}-${i}`}
-                      title={`${b.label ?? "Edition"} · ${b.standard && i === 0 ? "…" : short.format(b.from)} → ${i === bands.length - 1 ? "…" : short.format(b.to)}`}
-                      className={`absolute inset-y-0 rounded-[1px] border-r border-ink transition-opacity ${b.standard ? "bg-white/40" : TONES[i % TONES.length]} ${active ? "opacity-100" : "opacity-50 hover:opacity-90"}`}
+                      key={r.from}
+                      className={`absolute inset-y-0 transition-colors duration-500 ${r.done ? "bg-amber" : ""}`}
                       style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%` }}
                     />
                   );
                 })}
               </div>
-            )}
-            <input
-              type="range"
-              aria-label={labels.slider}
-              min={min}
-              max={max}
-              step={HOUR}
-              value={Math.min(Math.max(ts, min), max)}
-              onChange={(e) => move(Number(e.target.value))}
-              className="time-slider relative w-40 lg:w-48 xl:w-64 2xl:w-72"
-            />
-            {markers
-              .filter((m) => m > min && m < max)
-              .map((m) => (
-                <span
-                  key={m}
-                  aria-hidden
-                  title={new Date(m).toLocaleString(INTL_LOCALE[locale])}
-                  className="pointer-events-none absolute top-[calc(50%+7px)] h-3.5 w-[2px] -translate-y-1/2 rounded-full bg-white/80"
-                  style={{ left: `calc(8px + (100% - 16px) * ${pct(m)})` }}
-                />
-              ))}
+              <input
+                type="range"
+                aria-label={labels.slider}
+                min={view.from}
+                max={view.to}
+                step={HOUR}
+                value={Math.min(Math.max(ts, view.from), view.to)}
+                onChange={(e) => move(Number(e.target.value))}
+                className="time-slider relative w-40 lg:w-48 xl:w-64 2xl:w-72"
+              />
+              {markers
+                .filter((m) => m > view.from && m < view.to)
+                .map((m) => (
+                  <span
+                    key={m}
+                    aria-hidden
+                    title={new Date(m).toLocaleString(INTL_LOCALE[locale])}
+                    className="pointer-events-none absolute top-1/2 h-3.5 w-[2px] -translate-y-1/2 rounded-full bg-white/80"
+                    style={{ left: `calc(8px + (100% - 16px) * ${pct(m)})` }}
+                  />
+                ))}
+            </div>
+            <button type="button" aria-label={labels.next} title={labels.next} disabled={nextChange === undefined} onClick={() => nextChange !== undefined && move(nextChange)} className="rounded-[3px] border border-white/30 px-2 py-1 leading-none hover:bg-white/10 disabled:opacity-30">
+              ›
+            </button>
           </div>
-          <button type="button" aria-label={labels.next} title={labels.next} disabled={nextChange === undefined} onClick={() => nextChange !== undefined && move(nextChange)} className="rounded-[3px] border border-white/30 px-2 py-1 leading-none hover:bg-white/10 disabled:opacity-30">
-            ›
-          </button>
           <input
             type="datetime-local"
             aria-label={labels.hint}
             value={toInput(ts)}
+            suppressHydrationWarning
             onChange={(e) => e.target.value && move(new Date(e.target.value).getTime())}
             className="rounded-[3px] border border-white/30 bg-transparent px-1.5 py-1 text-xs text-white [color-scheme:dark]"
           />

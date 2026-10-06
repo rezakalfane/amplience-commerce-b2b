@@ -115,3 +115,19 @@ before comparing. Then **instant mode**: the page is rendered once per time stat
 **Result:** The schedule now has five editions (winter check, trade deals week, winter check again, holiday delivery cut-off, back to
 standard), with two new hero banners. `hero-slot.campaign` carries each edition's name so the slider can show one named band per edition
 (hover for dates) and the current name next to the date.
+
+### 18. "Everything in one row", "preview doesn't show the edition view above the slider", "it can unload / reload parts" (screenshots)
+**Result:** The banner fits on one row at every width (the row may be taller). On the deployed site the preload only advanced a little each time
+polling woke the function, because Vercel freezes a function after its response. The build now runs in `after()`, and the timeline moved to the
+Runtime Cache so every instance sees the same plan; a stale plan keeps serving while its replacement builds, so nothing unloads any more.
+The white vertical lines on the slider are the change markers (edition boundaries); the named bands appear as soon as the boundaries are known.
+
+### 19. "Fix the position of the tag", "fixed width for the date", "zoom the timeline"
+**Result:** The date has a fixed width so the edition tag stays put; the tag only appears once the page states are preloaded (that is when the
+names are known). Zoom − / + above the previous / next buttons (395 to 21 days, centred on the current time), a zoom label, and an automatic fit on the
+editions the first time they are known. A React hydration warning (the date is formatted in the server's timezone) is suppressed on that text.
+
+### 20. "Can the display of the page be faster as we slide?"
+**Result:** Once a page is ready the swap takes 4-20 ms with no request (instant mode). The slower cases were pages not yet ready: the `/blog` preload
+died on Vercel because the function was stopped before it finished and a replacement build only saved at the end. Replacement builds now save their
+progress separately and resume; polling restarts a dead build; `maxDuration` is raised to 300 s.

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { CONTENT_ENV, STAGING_ID } from "@/lib/amplience";
-import { timelineProgress } from "@/lib/timeline";
+import { kickBuild, timelineProgress } from "@/lib/timeline";
 import { parsePinned, pinnedHost, VSE_COOKIE, VSE_COOKIE_EXPIRED, VSE_COOKIE_OPTIONS } from "@/lib/vse";
 
 /** Moves the session's time preview to `ts` (unix ms), or leaves it with `null`. Preview deployments only. */
@@ -27,5 +27,8 @@ export async function getTimeMarkers() {
   const none = { markers: [] as number[], building: false, ranges: [] as { from: number; to: number; done: boolean }[], ready: false };
   if (CONTENT_ENV === "production") return none;
   const pinned = parsePinned((await cookies()).get(VSE_COOKIE)?.value ?? "");
-  return pinned ? timelineProgress(pinned) : none;
+  if (!pinned) return none;
+  const progress = await timelineProgress(pinned);
+  if (!progress.ready) kickBuild(pinned); // starts or resumes the preload if nobody is on it
+  return progress;
 }

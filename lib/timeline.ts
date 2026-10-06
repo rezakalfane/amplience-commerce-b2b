@@ -56,7 +56,7 @@ type States = Record<string, unknown>; // request key -> content, for one state
 
 // ---------------------------------------------------------------- shared store
 type Store = { get<T>(key: string): Promise<T | undefined>; set(key: string, value: unknown, ttl: number): Promise<void> };
-const g = globalThis as unknown as { __tlMem?: Map<string, { v: unknown; exp: number }>; __tlLocal?: Map<string, Local>; __tlId?: string };
+const g = globalThis as unknown as { __tlMem?: Map<string, { v: unknown; exp: number }>; __tlLocal?: Map<string, Local>; __tlId?: string; __tlKnown?: Set<string> };
 const mem = (g.__tlMem ??= new Map());
 const memoryStore: Store = {
   async get<T>(key: string) {
@@ -88,6 +88,10 @@ const INSTANCE = (g.__tlId ??= Math.random().toString(36).slice(2));
 
 const planKey = (p: { id: string; token: string }) => `${p.id}:${p.token}:plan`;
 const lockKey = (p: { id: string; token: string }) => `${p.id}:${p.token}:lock`;
+/** Progress of a replacement build, kept apart so the plan being served stays untouched until the new one is complete. */
+const nextKey = (p: { id: string; token: string }) => `${p.id}:${p.token}:next`;
+/** Every request key any instance has registered for this environment (so any instance can build the whole timeline). */
+const keysKey = (p: { id: string; token: string }) => `${p.id}:${p.token}:keys`;
 const stateKey = (h: string) => `state:${h}`;
 const encode = (s: States) => gzipSync(JSON.stringify(s)).toString("base64");
 const decode = (b: string) => JSON.parse(gunzipSync(Buffer.from(b, "base64")).toString()) as States;
@@ -157,6 +161,11 @@ export async function timelined<T>(reqKey: string, pin: Pin, load: Loader): Prom
   const local = locals.get(planKey(pin)) ?? { loaders: new Map<string, Loader>(), queued: false, building: false };
   locals.set(planKey(pin), local);
   local.loaders.set(reqKey, load);
+  const known = (g.__tlKnown ??= new Set<string>());
+  if (!known.has(`${planKey(pin)}|${reqKey}`)) {
+    known.add(`${planKey(pin)}|${reqKey}`);
+    void store.get<string[]>(keysKey(pin)).then((cur) => store.set(keysKey(pin), [...new Set([...(cur ?? []), reqKey])], HARD_TTL));
+  }
 
   const plan = await readPlan(planKey(pin));
   const h = plan && stateAt(plan, pin.ts);
@@ -176,17 +185,16 @@ export async function timelined<T>(reqKey: string, pin: Pin, load: Loader): Prom
   return retry(() => load(pinnedHost(pin.id, pin.token, pin.ts), false)) as Promise<T>;
 }
 
-async function maybeBuild(local: Local, pin: Pin) {
+async function maybeBuild(local: Local, pin: Pin, debounce = true) {
   if (local.building) return;
-  await sleep(400); // let the render that triggered this register all of its requests
+  if (debounce) await sleep(400); // let the render that triggered this register all of its requests
   const shared = await store.get<Plan>(planKey(pin));
-  const keys = new Set([...local.loaders.keys(), ...(shared?.keys ?? [])]);
+  const keys = new Set([...local.loaders.keys(), ...(shared?.keys ?? []), ...((await store.get<string[]>(keysKey(pin))) ?? [])]);
   const covered = shared ? [...keys].every((k) => shared.keys.includes(k)) : false;
   const fresh = Boolean(shared?.complete && Date.now() - shared.builtAt < SOFT_TTL);
   if (fresh && covered) return;
-  const building = shared && !shared.complete && Date.now() - shared.updatedAt < LOCK_MS;
   const lock = await store.get<{ owner: string; at: number }>(lockKey(pin));
-  if ((building || (lock && Date.now() - lock.at < LOCK_MS)) && lock?.owner !== INSTANCE) return; // someone else is on it
+  if (lock && Date.now() - lock.at < LOCK_MS && lock.owner !== INSTANCE) return; // someone else is on it
   local.building = true;
   try {
     for (let attempt = 0; attempt < 6; attempt++) {
@@ -214,7 +222,10 @@ async function build(local: Local, pin: Pin, wanted: string[], previous: Plan | 
   const keys = [...loaders.keys()];
   const min = started - RANGE.before - DAY;
   const max = started + RANGE.after + DAY;
-  const plan: Plan = {
+  // Pick up an interrupted build of the same requests (its states were stored before its plan was).
+  const unfinished = await store.get<Plan>(nextKey(pin));
+  const resume = unfinished && !unfinished.complete && unfinished.keys.length === keys.length && keys.every((k) => unfinished.keys.includes(k)) && Date.now() - unfinished.updatedAt < 10 * 60_000;
+  const plan: Plan = resume ? unfinished : {
     keys,
     min,
     max,
@@ -231,7 +242,6 @@ async function build(local: Local, pin: Pin, wanted: string[], previous: Plan | 
   const replacing = Boolean(previous?.complete);
 
   const persist = async (final: boolean) => {
-    if (replacing && !final) return;
     for (const [h, s] of states) {
       if (!written.has(h)) {
         await store.set(stateKey(h), encode(s), HARD_TTL);
@@ -241,7 +251,9 @@ async function build(local: Local, pin: Pin, wanted: string[], previous: Plan | 
     plan.complete = final;
     plan.updatedAt = Date.now();
     if (final) plan.builtAt = Date.now();
-    await store.set(planKey(pin), plan, HARD_TTL);
+    // A replacement keeps its progress apart; the plan being served is swapped only when the new one is complete.
+    await store.set(final || !replacing ? planKey(pin) : nextKey(pin), plan, HARD_TTL);
+    if (final && replacing) await store.set(nextKey(pin), { ...plan, complete: true }, 1);
   };
   const beat = setInterval(() => {
     void store.set(lockKey(pin), { owner: INSTANCE, at: Date.now() }, 60);
@@ -294,6 +306,23 @@ async function build(local: Local, pin: Pin, wanted: string[], previous: Plan | 
     console.log(`[timeline] ready in ${((Date.now() - started) / 1000).toFixed(1)}s: ${keys.length} requests per probe, ${states.size} states`);
   } finally {
     clearInterval(beat);
+  }
+}
+
+/**
+ * Called by the status polling: a build that died (a function instance stopped mid-way) is picked up again from where
+ * it left off, without waiting for someone to load a page.
+ */
+export function kickBuild(pin: Pin) {
+  const local = locals.get(planKey(pin)) ?? { loaders: new Map<string, Loader>(), queued: false, building: false };
+  locals.set(planKey(pin), local);
+  if (local.queued || local.building) return;
+  local.queued = true;
+  const task = () => maybeBuild(local, pin, false).finally(() => (local.queued = false));
+  try {
+    after(task);
+  } catch {
+    void task();
   }
 }
 
