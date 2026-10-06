@@ -367,9 +367,10 @@ S["page"] = base(
         "title": lstr("Title", "Used for the browser title", minLength=1, maxLength=120),
         "description": lstr("Description", "SEO description", maxLength=300),
         "_meta": meta_key("The delivery key is the URL path without language: home, faq, guides, blog, or any new path"),
+        "image": link(["image"], "Cover image", "Shown on the page's card in Dynamic Content (and usable as a social sharing image)"),
         "components": links(COMPONENTS, "Components", "Stacked top to bottom", 0, 40),
     },
-    ["title", "description", "_meta", "components"], ["title", "_meta", "components"],
+    ["title", "description", "_meta", "image", "components"], ["title", "_meta", "components"],
 )
 
 SLOT_SCHEMAS = {"hero-slot"}

@@ -177,10 +177,11 @@ def main():
         "blog": ("The B2B Commerce Blog", "Practical guidance on pricing, ordering, integrations, payments, sales and headless storefronts for B2B commerce teams.",
                  ("Browse articles", "/blog"), "blog-hero-photo.jpg"),
     }
-    hero = {}
+    hero, hero_img = {}, {}
     for key, (title, desc, (cta_l, cta_h), photo) in hero_def.items():
         t_f, d_f, c_f, _h = HEROES_FR[key]
         img = image(f"b2b-hero-{key}", photo, title, t_f)
+        hero_img[key] = img
         body = {"title": L(title, t_f), "description": L(desc, d_f), "image": clink("image", img),
                 "cta": {"label": L(cta_l, c_f), "href": cta_h}, "variant": "default"}
         if key == "home":
@@ -213,7 +214,8 @@ def main():
 
     def page(key, label, title, title_f, desc, desc_f, comps):
         return items.upsert("page", label, {
-            "_meta": {"deliveryKey": key}, "title": L(title, title_f), "description": L(desc, desc_f), "components": comps})
+            "_meta": {"deliveryKey": key}, "title": L(title, title_f), "description": L(desc, desc_f),
+            "image": clink("image", hero_img[key]), "components": comps})  # cover = the page hero's image
 
     page("home", "Page: home", HOME["title"], HOME["title"], HOME["description"], HOME_FR["description"],
          [clink("hero-slot", home_slot), clink("text", intro), clink("category-tiles", tiles)]

@@ -57,6 +57,9 @@ and **Real-time preview** next to the content form, and the home hero can be **s
 <td><img src="docs/images/time-preview.jpg" alt="Time preview of the staging site"><br><sub>Time preview: travel to any date; changed areas blink</sub></td>
 <td><img src="docs/images/amp-scheduling-timeline.jpg" alt="Editions on the scheduling timeline"><br><sub>The five scheduled editions on the Scheduling timeline</sub></td>
 </tr>
+<tr>
+<td colspan="2"><img src="docs/images/content-type-cards.jpg" alt="Content type cards"><br><sub>A card for every content type: images, titles and text in the content browser</sub></td>
+</tr>
 </table>
 
 ## Quick start
@@ -83,6 +86,7 @@ python3 scripts/amplience/deploy_schemas.py     # content type schemas and conte
 python3 scripts/amplience/seed.py               # images, EN + FR content, publish
 python3 scripts/amplience/schedule.py           # scheduled hero example
 python3 scripts/amplience/visualizations.py https://<staging-site> http://localhost:3000
+python3 scripts/amplience/cards.py              # content type cards (thumbnails in Dynamic Content)
 ```
 
 ## Project layout

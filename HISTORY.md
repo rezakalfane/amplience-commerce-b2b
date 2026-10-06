@@ -137,3 +137,10 @@ progress separately and resume; polling restarts a dead build; `maxDuration` is 
 **Result:** Audited every document against the code (broken image links, stale statements, unreferenced images). Added the time preview screenshot
 and a cropped banner strip, used the content type registration screenshot, converted the retina PNGs (about 12 MB) to 1900 px JPEGs, and added
 operations notes for the time preview (Runtime Cache, `maxDuration`, rate limits).
+
+### 22. "Can we use nice content type cards with images, title and/or text when possible?" (screenshot of the card chooser)
+**Result:** `cards.py` registers a card on all 21 content types with Amplience's built-in templates: summary photo (pages, heroes, feature blocks,
+posts, guides, spotlights, authors, the hero slot), gallery (the three row components), photo (images) and text (FAQs, announcements, listings...).
+Pointers go through links and localized values (`/image/image`, `/title/values/0/value`); the old blog post card pointed at `/title`, which
+stopped working when titles became localized. Pages got an optional **cover image** so their card has a picture whatever component comes first.
+Every card was rendered from a real item to check it (`docs/images/content-type-cards.jpg`).

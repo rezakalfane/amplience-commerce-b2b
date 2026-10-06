@@ -15,6 +15,7 @@ updates items in place (items are matched by label, assets by name).
 | `seed.py` | uploads images, creates every item (EN + FR) and publishes in dependency order |
 | `schedule.py` | seeds the campaign calendar: an event with five scheduled editions on the home hero slot (re-running replaces it) |
 | `visualizations.py` | registers the Preview / Real-time preview visualizations on content types |
+| `cards.py` | registers a content type card (gallery / summary photo / photo / text with JSON pointers) on every content type |
 | `data/` | the sample content (English and French) |
 | `images/` | the 62 photos and avatars the seed uploads |
 
@@ -25,6 +26,7 @@ python3 scripts/amplience/deploy_schemas.py        # 1. schemas and content type
 python3 scripts/amplience/seed.py                  # 2. images, items, publish   (--no-publish to skip publishing)
 python3 scripts/amplience/schedule.py              # 3. scheduled hero (optional)
 python3 scripts/amplience/visualizations.py <site-url> [more urls]   # 4. preview URLs
+python3 scripts/amplience/cards.py                 # 5. content type cards (thumbnails in the content browser)
 ```
 
 ## How the pieces work

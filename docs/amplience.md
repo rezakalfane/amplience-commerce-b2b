@@ -27,7 +27,7 @@ Python helpers; `deploy_schemas.py` pushes them). **Every text field is field-le
 
 | Schema | Purpose | Key fields |
 |---|---|---|
-| `page` | A URL-addressed page made of stacked components | `title`, `description`, `_meta.deliveryKey` (the path), `components[]` (links to any component below) |
+| `page` | A URL-addressed page made of stacked components | `title`, `description`, `_meta.deliveryKey` (the path), `image` (cover, for the card), `components[]` (links to any component below) |
 | `hero-banner` | Page hero | `title`, `description`, `image`, `secondImage`, `cta {label, href}`, `variant` (`default` / `home`) |
 | `hero-slot` | **Slot** holding one `hero-banner` | `slotContent[]` (max 1), `campaign` (name shown on the time preview timeline). Schedulable with Editions |
 | `feature-block` | Image next to title and copy | `title`, `copy` (markdown), `image`, `layout` |
@@ -50,6 +50,26 @@ Python helpers; `deploy_schemas.py` pushes them). **Every text field is field-le
 The first five (`blogpost`, `text`, `image`, `video`, `author`) pre-existed in the hub; they were **re-versioned** to make
 their text fields localizable (and `account` gained `Commerce B2B`). Older demo items of those types remain in the hub for
 the admin UI but are not used and may no longer validate.
+
+### Content type cards
+
+Each content type has a **card**: the thumbnail Dynamic Content shows in the content browser, search results and link pickers, so editors recognise an
+item at a glance. `scripts/amplience/cards.py` registers one per type, using Amplience's built-in card templates (gallery, summary photo, photo, text),
+which read the item from virtual staging and take **JSON pointers** into the content tree. Pointers follow content links (`/image/image` goes through the
+linked `image` item to its DAM image) and localized values (`/title/values/0/value` is the first locale, English).
+
+![Cards for every content type](images/content-type-cards.jpg)
+*One real item per type, rendered with its card.*
+
+| Card | Content types | Shows |
+|---|---|---|
+| Summary photo | `page`, `hero-banner`, `hero-slot`, `feature-block`, `blogpost`, `buying-guide`, `product-spotlight`, `author` | the item's image with its title (`hero-slot`: its image and campaign name; `page`: its cover image) |
+| Gallery | `spotlight-row`, `guide-row`, `post-grid` | the first three linked items' images, with the row title |
+| Photo | `image` | the image |
+| Text | `faq`, `faq-section`, `announcement-bar`, `site-navigation`, `text`, `video`, `category-tiles`, `guide-listing`, `post-listing` | the question, message, title or first words of the text |
+
+`page` therefore has an optional **cover image** (`image`), seeded with each page's hero image; it is what its card shows whatever component comes first.
+To change a card, edit `CARDS` in `cards.py` and run it again, or use *Development → Content types → card* in the UI (the built-in templates with pointer fields).
 
 ### Rules to remember
 
