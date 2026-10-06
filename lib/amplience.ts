@@ -44,12 +44,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Virtual staging allows 7 requests/s (350/min) per environment, shared by every read. Background requests (the time
- * travel preload, see lib/timeline.ts) are paced to 5/s to leave room for pages; pages themselves are never delayed.
+ * travel preload, see lib/timeline.ts) are paced to ~6/s to leave room for pages; pages themselves are never delayed.
  */
 const pacer = ((globalThis as unknown as { __ampPacer?: { next: number } }).__ampPacer ??= { next: 0 });
 async function pace() {
   const slot = Math.max(Date.now(), pacer.next);
-  pacer.next = slot + 200;
+  pacer.next = slot + 160; // ~6 requests/s: the limit is 7/s, shared with the pages themselves
   if (slot > Date.now()) await sleep(slot - Date.now());
 }
 

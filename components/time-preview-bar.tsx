@@ -34,12 +34,13 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
   const wasReady = useRef(false);
   const { segments } = useSyncExternalStore(timeStore.subscribe, timeStore.get, timeStore.get);
   const [markers, setMarkers] = useState<number[]>([]);
-  const [ranges, setRanges] = useState<{ from: number; to: number; done: boolean }[]>([]);
+  const [ranges, setRanges] = useState<{ from: number; to: number; done: boolean; changing: boolean }[]>([]);
   const min = now - 30 * DAY;
   const max = now + 365 * DAY;
   // The slider shows a window of the full range (30 days back to a year ahead): zoom in to see the editions better.
   const [win, setWin] = useState<{ from: number; to: number } | null>(null);
   const userZoomed = useRef(false);
+  const fitted = useRef(""); // change points the view was last fitted to: refit while more of them are found
   const view = win ?? { from: min, to: max };
   const span = view.to - view.from;
   const fit = (from: number, to: number) => {
@@ -92,9 +93,9 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
       .then((r) => {
         setMarkers(r.markers);
         setRanges(r.ranges);
-        // First time the change points are known: zoom onto the editions (unless the user already chose a zoom).
-        if (r.markers.length > 0 && !userZoomed.current) {
-          userZoomed.current = true;
+        // Zoom onto the editions as their change points are found (until the user chooses a zoom of their own).
+        if (r.markers.length > 0 && !userZoomed.current && fitted.current !== r.markers.join()) {
+          fitted.current = r.markers.join();
           const lo = Math.min(r.markers[0], latest.current) - 14 * DAY;
           const hi = Math.max(r.markers[r.markers.length - 1], latest.current) + 14 * DAY;
           setWin(fit(Math.max(min, lo), Math.min(max, hi)));
@@ -211,7 +212,7 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
                   return (
                     <span
                       key={r.from}
-                      className={`absolute inset-y-0 transition-colors duration-500 ${r.done ? "bg-amber" : ""}`}
+                      className={`absolute inset-y-0 transition-colors duration-500 ${r.done ? "bg-amber" : r.changing ? "animate-pulse bg-amber/50" : ""}`}
                       style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%` }}
                     />
                   );

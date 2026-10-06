@@ -76,7 +76,7 @@ The token expires periodically (90 days by default). Create a new one for each o
 - The preload runs in the background after a response (`after()`), so `app/[locale]/layout.tsx` sets `maxDuration = 300`. A heavy page (the blog) needs about a minute the first time.
 - Its state lives in the **Runtime Cache** (Observability → Runtime Cache shows it; keys start with `<staging id>:<token>`). A plan is rebuilt after 8 minutes (or when a new page brings new queries) and entries
   expire with the 30-minute hard limit; a stale plan keeps serving until its replacement completes.
-- Virtual staging allows 7 requests/s (350/min) for everything on that environment; the preload uses at most 5/s and backs off on `429`. If other tools hammer staging, the preload slows down but resumes.
+- Virtual staging allows 7 requests/s (350/min) for everything on that environment; the preload uses about 6/s at most and backs off on `429`. If other tools hammer staging, the preload slows down but resumes.
 - Schedules are in the hub: `python3 scripts/amplience/schedule.py` replaces the event, then the timeline refreshes itself within minutes.
 
 ## Production readiness checklist

@@ -292,16 +292,21 @@ async function build(local: Local, pin: Pin, wanted: string[], previous: Plan | 
   };
 
   try {
-    const work: Promise<void>[] = [];
+    // 1. probe the whole range (fills in every gap whose two ends agree)
     await Promise.all(
       plan.instants.map(async (t, i) => {
         plan.samples[i] = await at(t);
-        // A gap can be settled as soon as both of its probes are in.
-        if (i > 0) work.push(settle(i - 1));
-        if (i < SAMPLES - 1) work.push(settle(i));
       }),
     );
-    await Promise.all(work);
+    await persist(false);
+    // 2. find the change points, left to right, two gaps at a time: markers and edition bands appear one after the other
+    //    instead of all at the very end
+    const queue = plan.refined.map((_, i) => i).filter((i) => plan.samples[i] && plan.samples[i + 1] && plan.samples[i]!.h !== plan.samples[i + 1]!.h && !plan.refined[i]);
+    await Promise.all(
+      Array.from({ length: 2 }, async () => {
+        for (let i = queue.shift(); i !== undefined; i = queue.shift()) await settle(i);
+      }),
+    );
     await persist(true);
     console.log(`[timeline] ready in ${((Date.now() - started) / 1000).toFixed(1)}s: ${keys.length} requests per probe, ${states.size} states`);
   } finally {
@@ -330,7 +335,8 @@ export function kickBuild(pin: Pin) {
 export type Progress = {
   markers: number[];
   building: boolean;
-  ranges: { from: number; to: number; done: boolean }[];
+  /** `changing`: the content differs between the two ends but the exact change point is not found yet. */
+  ranges: { from: number; to: number; done: boolean; changing: boolean }[];
   /** The preload is complete and covers every request this instance has seen: pages can be rendered per time state. */
   ready: boolean;
 };
@@ -344,7 +350,7 @@ export async function timelineProgress(pin: { id: string; token: string }): Prom
   const ranges = plan.instants.slice(0, -1).map((from, i) => {
     const a = plan.samples[i];
     const b = plan.samples[i + 1];
-    return { from, to: plan.instants[i + 1], done: Boolean(a && b && (a.h === b.h || plan.refined[i])) };
+    return { from, to: plan.instants[i + 1], done: Boolean(a && b && (a.h === b.h || plan.refined[i])), changing: Boolean(a && b && a.h !== b.h && !plan.refined[i]) };
   });
   const seen = [...(locals.get(planKey(pin))?.loaders.keys() ?? [])];
   return {

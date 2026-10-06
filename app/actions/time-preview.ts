@@ -24,7 +24,7 @@ export async function setTimePreview(ts: number | null) {
 
 /** Change points and preload progress for the session's staging environment (slider markers and progress bar). */
 export async function getTimeMarkers() {
-  const none = { markers: [] as number[], building: false, ranges: [] as { from: number; to: number; done: boolean }[], ready: false };
+  const none = { markers: [] as number[], building: false, ranges: [] as { from: number; to: number; done: boolean; changing: boolean }[], ready: false };
   if (CONTENT_ENV === "production") return none;
   const pinned = parsePinned((await cookies()).get(VSE_COOKIE)?.value ?? "");
   if (!pinned) return none;

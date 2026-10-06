@@ -144,3 +144,9 @@ posts, guides, spotlights, authors, the hero slot), gallery (the three row compo
 Pointers go through links and localized values (`/image/image`, `/title/values/0/value`); the old blog post card pointed at `/title`, which
 stopped working when titles became localized. Pages got an optional **cover image** so their card has a picture whatever component comes first.
 Every card was rendered from a real item to check it (`docs/images/content-type-cards.jpg`).
+
+### 23. "Why does it take forever to load the progress and there is no timeline with the editions above the slider?" (screenshot)
+**Result:** The deployed preload did finish (about 45 s cold) but showed the worst picture meanwhile: the fill was missing exactly where the editions
+are, bands only appeared at the very end and the view fitted once on partial data. Change points are now located left to right, two at a time, so markers
+and bands arrive progressively; stretches known to contain a change pulse on the track; the view refits as they are found (until you zoom); pacing is
+about 6 requests/s (limit 7/s). Local cold build 23 s to 20 s.

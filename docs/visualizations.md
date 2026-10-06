@@ -82,10 +82,12 @@ Content pinned to a moment only changes at a few instants (an Edition starting, 
    bisects down to the hour to find the exact change point. One probe loads *all* registered requests from one time-pinned
    host. The staging host rewrites some links to its own domain (which contains the timestamp), so that text is blanked
    before comparing. A gap between two probes becomes **resolved** as soon as it is known and is answered from memory at once,
-   even while the rest is still loading; that is the progress fill. The change points are the slider markers and the
+   even while the rest is still loading; that is the progress fill. Stretches known to contain a change whose exact point is still being
+   searched pulse; the change points are then found left to right, two at a time, so markers and edition bands appear one after the other
+   (the view refits onto the editions as they are found, until you zoom yourself). The change points are the slider markers and the
    previous / next buttons.
 2. **Rate limits.** Virtual staging allows **7 requests per second (350 per minute)**, shared by every staging read, and answers
-   `429` beyond that ([limits](https://amplience.com/developers/docs/apis/limits/)). Background probes are paced to 5 per second, run four at a
+   `429` beyond that ([limits](https://amplience.com/developers/docs/apis/limits/)). Background probes are paced to about 6 per second, run four at a
    time, back off exponentially on `429` (`amp()` in `lib/amplience.ts`) and a build interrupted by a limit **resumes** where it
    stopped. Pages themselves are never delayed. A typical build (5 changes, 2 requests per probe) takes about 25 seconds.
 3. **Instant mode** (`components/time-variants.tsx`, `time-switch.tsx`). Once the timeline is complete, the server renders the
