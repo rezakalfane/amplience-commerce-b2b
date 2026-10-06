@@ -73,6 +73,7 @@ The token expires periodically (90 days by default). Create a new one for each o
 
 - [x] Production and Preview deployments with separate content environments, reported by `X-Content-Environment`.
 - [x] Visualizations (preview and real-time) registered on the content types.
+- [ ] Preview applications added in the hub (Settings → Preview) for Scheduling and Edition previews ([visualizations.md](visualizations.md#previewing-the-whole-site-from-scheduling-preview-applications)).
 - [ ] Replace all fictional sample content (authors, article text, FAQ policies, promotions, contact details).
 - [ ] Add a **publish webhook** (Amplience → a Next.js route that calls `revalidateTag`) and cache Amplience reads with tags for instant updates.
 - [ ] Add BigCommerce **Store Translations** for French product content (or accept English product names).

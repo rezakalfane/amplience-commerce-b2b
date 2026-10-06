@@ -11,7 +11,7 @@ const toLocale = (l?: string | null): Locale => (l?.toLowerCase().startsWith("fr
  * Real-time visualization: connects to the Amplience content form with the Visualization SDK and re-renders the
  * page (on the server, through an action) on every edit, without saving. Starts from the server-rendered view.
  */
-export function RealtimePreview({ initial, initialLocale }: { initial: ReactNode; initialLocale: Locale }) {
+export function RealtimePreview({ initial, initialLocale, schema }: { initial: ReactNode; initialLocale: Locale; schema?: string }) {
   const [view, setView] = useState<ReactNode>(initial);
   const [status, setStatus] = useState<"connecting" | "live" | "standalone">("connecting");
   const state = useRef<{ model?: unknown; locale: Locale; seq: number; timer?: ReturnType<typeof setTimeout> }>({
@@ -30,7 +30,7 @@ export function RealtimePreview({ initial, initialLocale }: { initial: ReactNode
         if (s.model === undefined) return;
         const n = ++s.seq;
         try {
-          const node = await renderModel(s.model, s.locale);
+          const node = await renderModel(s.model, s.locale, schema);
           if (!cancelled && n === s.seq) setView(node);
         } catch (e) {
           console.error("preview render failed", e);
@@ -67,7 +67,7 @@ export function RealtimePreview({ initial, initialLocale }: { initial: ReactNode
       clearTimeout(s.timer);
       unsubscribe.forEach((u) => u());
     };
-  }, []);
+  }, [schema]);
 
   return (
     <>

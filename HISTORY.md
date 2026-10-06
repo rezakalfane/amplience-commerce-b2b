@@ -75,3 +75,11 @@ and connected Vercel (Production from `main`, Preview from `staging`); preview d
 ### 11. "Be sure to use my rezakalfane GitHub account for all commit"
 **Result:** The repository now commits as the `rezakalfane` GitHub identity (noreply address). The first two commits used the work
 email, and Vercel did not start builds for them; new commits use the right identity.
+
+### 12. "Should we update the hub properties? also failing" (screenshots)
+**Result:** Two fixes. (1) Real-time preview connected but showed "no preview": the form model from the SDK can arrive wrapped in
+`{ content }` and without a root `_meta.schema`, so the server action now unwraps it, falls back to the saved item's schema and, if
+a model is still unrecognised, prints the schema and fields it received. (2) Hub **Preview applications**: the storefront accepts
+`?vse=<domain>` on preview deployments (stored in a cookie by `proxy.ts`) so Scheduling and Edition previews show the whole site at
+that date. The hub setting itself must be added in the UI (the API needs the DAM publishing secret); see
+[docs/visualizations.md](docs/visualizations.md).

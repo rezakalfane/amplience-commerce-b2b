@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AMP_LOCALES, CONTENT_ENV, DELIVERY_HOST } from "@/lib/amplience";
+import { VSE_HOST } from "@/lib/vse";
 import type { Locale } from "@/lib/i18n";
 import { RealtimePreview } from "./realtime-preview";
 import { renderPreview } from "./render";
@@ -12,7 +13,6 @@ import { renderPreview } from "./render";
  */
 export const dynamic = "force-dynamic";
 
-const VSE_HOST = /^[a-z0-9-]+\.staging\.bigcontent\.io$/i;
 
 export default async function PreviewPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (CONTENT_ENV === "production") notFound();
@@ -26,7 +26,8 @@ export default async function PreviewPage({ searchParams }: { searchParams: Prom
   const res = await fetch(`https://${vse}/content/id/${id}?depth=all&format=inlined&locale=${AMP_LOCALES[locale]}`, { cache: "no-store" });
   if (!res.ok) notFound();
   const { content } = (await res.json()) as { content: Record<string, unknown> };
-  const initial = await renderPreview(content, locale);
+  const schema = (content._meta as { schema?: string } | undefined)?.schema;
+  const initial = await renderPreview(content, locale, schema);
 
-  return one(sp.realtime) === "true" ? <RealtimePreview initial={initial} initialLocale={locale} /> : initial;
+  return one(sp.realtime) === "true" ? <RealtimePreview initial={initial} initialLocale={locale} schema={schema} /> : initial;
 }

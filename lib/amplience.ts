@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import type { Locale } from "./i18n";
+import { VSE_COOKIE, VSE_HOST } from "./vse";
 
 /**
  * Amplience Delivery API client (read only).
@@ -14,6 +16,17 @@ export const CONTENT_ENV: "production" | "preview" = DELIVERY_HOST.includes("sta
 /** URL locale -> Amplience locales, in fallback order (field-level localization falls back to English). */
 export const AMP_LOCALES: Record<Locale, string> = { en: "en-US", fr: "fr-FR,en-US" };
 
+/**
+ * Host to read content from. Preview deployments can be pinned to another virtual staging domain for a session
+ * (Amplience preview apps open the site with `?vse=<domain>`, a domain frozen at the date or edition being previewed;
+ * `proxy.ts` stores it in a cookie). Production always reads the CDN.
+ */
+async function host(): Promise<string> {
+  if (CONTENT_ENV === "production") return DELIVERY_HOST;
+  const pinned = (await cookies()).get(VSE_COOKIE)?.value;
+  return pinned && VSE_HOST.test(pinned) ? pinned : DELIVERY_HOST;
+}
+
 const PARAMS = (locale: Locale) => ({ depth: "all", format: "inlined", locale: AMP_LOCALES[locale] });
 const NEXT_OPTS = CONTENT_ENV === "preview" ? { cache: "no-store" as const } : { next: { revalidate: 60 } };
 
@@ -22,7 +35,7 @@ export const schemaId = (name: string) => `https://content.commerce.com/${name}`
 /** One content item by delivery key (e.g. `home`, `blog/my-post`), localized and with links resolved. */
 export async function getByKey<T>(key: string, locale: Locale): Promise<T | undefined> {
   const qs = new URLSearchParams(PARAMS(locale));
-  const res = await fetch(`https://${DELIVERY_HOST}/content/key/${key}?${qs}`, NEXT_OPTS);
+  const res = await fetch(`https://${await host()}/content/key/${key}?${qs}`, NEXT_OPTS);
   if (res.status === 404) return undefined;
   if (!res.ok) throw new Error(`Amplience ${res.status} for key "${key}"`);
   return ((await res.json()) as { content: T }).content;
@@ -36,7 +49,8 @@ export async function listBySchema<T>({ schema, where = {}, sort }: FilterReques
   const out: T[] = [];
   let cursor: string | undefined;
   do {
-    const res = await fetch(`https://${DELIVERY_HOST}/content/filter`, {
+    const base = await host();
+    const res = await fetch(`https://${base}/content/filter`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

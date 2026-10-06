@@ -31,6 +31,22 @@ Dynamic Content form ──postMessage──► RealtimePreview ──server act
                   saved item ──► /preview?id=… ──► virtual staging ──► renderPreview() ──► HTML
 ```
 
+## Previewing the whole site from Scheduling (preview applications)
+
+Visualizations preview one item next to its form. To preview the **site** at a date or in an edition (for example to see the
+scheduled home hero), Dynamic Content uses **Settings → Preview** applications. They are a hub setting that the Management
+API cannot update without the hub's DAM publishing secret, so add them in the UI:
+
+| Preview application name | Preview application URL |
+|---|---|
+| `Storefront staging` | `https://amplience-commerce-b2b-git-staging-rza-kalfanes-projects.vercel.app/?vse={{vse.domain}}` |
+| `Storefront local` | `http://localhost:3000/?vse={{vse.domain}}` |
+
+`vse.domain` is a virtual staging domain **frozen at the date and time (or edition) being previewed**. The storefront's
+`proxy.ts` stores it in the `amp_vse` cookie (preview deployments only, valid `*.staging.bigcontent.io` hosts only), and
+`lib/amplience.ts` reads every item from that host, so the whole site, including the slot's hero, shows what will be live then.
+Open `/?vse=reset` to go back to the default staging host. In production the parameter is ignored.
+
 ## Safeguards
 
 - `/preview` returns **404 in production** (`CONTENT_ENV === "production"`) and the server action throws there.
