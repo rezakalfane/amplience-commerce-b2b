@@ -156,3 +156,9 @@ about 6 requests/s (limit 7/s). Local cold build 23 s to 20 s.
 (`after()`, `maxDuration` 300). A GitHub Action calls it when a Preview deployment is ready; the Runtime Cache is shared by all preview deployments, so staging is warm too.
 Cache lifetime 4 h, rebuild after 5 min of use with the old one serving, and the page re-renders itself when a fresher timeline replaces it. Tested locally: after warming,
 home, blog and French home are instantly ready on the first visit. A tooling slip worth remembering: `path` is a special variable in zsh (tied to `$PATH`).
+
+### 25. Making the warm-up dependable
+**Result:** The first workflow was invalid YAML (an unquoted `: ` inside the input description made GitHub fail the run in 0 s; fixed and validated). Vercel reports the
+environment as `Preview` and a `success` status with the deployment URL, so the condition matches. A real test on staging showed the build started in the background by
+the warm call had not finished minutes later (it only completed after a visit restarted it), so `/api/warm` now builds **inside its own request** and returns the outcome
+(cold: 123 s, `ready: true`, 5 markers; warm: instant), which also shows up in the Action's log.

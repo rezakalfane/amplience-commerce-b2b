@@ -25,5 +25,5 @@ jobs:
           url="${INPUT_URL:-$DEPLOYMENT_URL}"
           url="${url:-https://amplience-commerce-b2b-git-staging-rza-kalfanes-projects.vercel.app}"
           echo "Warming $url"
-          curl --fail --silent --show-error --max-time 120 --retry 3 --retry-delay 10 -H "x-warm-token: $WARM_TOKEN" "$url/api/warm"
+          curl --fail --silent --show-error --max-time 295 --retry 1 --retry-delay 10 -H "x-warm-token: $WARM_TOKEN" "$url/api/warm"
           echo

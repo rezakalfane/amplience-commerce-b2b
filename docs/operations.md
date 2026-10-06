@@ -77,7 +77,8 @@ The token expires periodically (90 days by default). Create a new one for each o
 - **Warm-up after each deploy.** Building the timeline takes 1-2 minutes (nine requests per probe), so it is done before anyone asks: the GitHub Action
   `.github/workflows/warm-timeline.yml` runs when Vercel reports a **Preview** deployment ready and calls `GET /api/warm` (header `x-warm-token`, secret `WARM_TOKEN`
   in both GitHub and Vercel's Preview scope). The route registers the requests of a typical visit (`warmRequests()` in `lib/content.ts`: navigation, home, FAQ, guides, blog,
-  the post and guide lists, plus French navigation and home) and builds in the background. The timeline lives in the project's Runtime Cache, which all Preview deployments
+  the post and guide lists, plus French navigation and home) and **builds inside that request** (up to `maxDuration`, 300 s), so the Action's log shows the real outcome
+  (`{"ready":true,"markers":5,"seconds":123,...}`; a cold build takes about two minutes, a fresh timeline answers at once). Work left running after a response is not dependable on serverless. The timeline lives in the project's Runtime Cache, which all Preview deployments
   share, so warming the new deployment also warms the staging site. The cache entry lives 4 hours; after 5 minutes of use a rebuild starts in the background and the
   page re-renders itself when the fresher timeline replaces the old one. Run it by hand: `curl -H "x-warm-token: $WARM_TOKEN" https://<preview-url>/api/warm`, or
   *Actions → Warm the time travel timeline → Run workflow*. The route is a 404 in production and without the token.

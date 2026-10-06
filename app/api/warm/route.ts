@@ -3,7 +3,7 @@ import { CONTENT_ENV, STAGING_ID } from "@/lib/amplience";
 import { warmRequests } from "@/lib/content";
 import { warmTimeline } from "@/lib/timeline";
 
-/** The preload runs after the response (`after()`), so give the function room to finish it. */
+/** The build runs inside this request, so give the function room to finish it. */
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,15 @@ export async function GET(request: NextRequest) {
   if (CONTENT_ENV === "production" || !secret || request.headers.get("x-warm-token") !== secret) return new NextResponse("Not found", { status: 404 });
   if (!token) return NextResponse.json({ error: "AMPLIENCE_TIME_TOKEN is not set" }, { status: 500 });
   const keys = warmRequests();
-  await warmTimeline({ id: STAGING_ID, token, ts: Date.now() }, keys);
-  return NextResponse.json({ warming: true, requests: keys.length });
+  const started = Date.now();
+  // Builds in this very request (up to maxDuration) so the caller sees the real outcome.
+  const progress = await warmTimeline({ id: STAGING_ID, token, ts: started }, keys);
+  return NextResponse.json({
+    requests: keys.length,
+    ready: progress.ready,
+    building: progress.building,
+    markers: progress.markers.length,
+    builtAt: progress.builtAt ? new Date(progress.builtAt).toISOString() : null,
+    seconds: Math.round((Date.now() - started) / 1000),
+  });
 }

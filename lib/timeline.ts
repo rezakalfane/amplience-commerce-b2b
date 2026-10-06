@@ -314,8 +314,11 @@ async function build(local: Local, pin: Pin, wanted: string[], previous: Plan | 
   }
 }
 
-/** Registers requests for this environment and builds their timeline now (called by /api/warm after a deploy). */
-export async function warmTimeline(pin: Pin, reqKeys: string[]) {
+/**
+ * Registers requests for this environment and builds their timeline NOW, inside the calling request (used by /api/warm, which
+ * stays open until it is done: work left running after a response is not dependable on serverless). Returns the resulting progress.
+ */
+export async function warmTimeline(pin: Pin, reqKeys: string[]): Promise<Progress> {
   const local = locals.get(planKey(pin)) ?? { loaders: new Map<string, Loader>(), queued: false, building: false };
   locals.set(planKey(pin), local);
   for (const k of reqKeys) {
@@ -324,7 +327,8 @@ export async function warmTimeline(pin: Pin, reqKeys: string[]) {
   }
   const cur = (await store.get<string[]>(keysKey(pin))) ?? [];
   await store.set(keysKey(pin), [...new Set([...cur, ...reqKeys])], HARD_TTL);
-  kickBuild(pin);
+  await maybeBuild(local, pin, false); // returns at once when the timeline is fresh and covers everything, or someone else is building
+  return timelineProgress(pin);
 }
 
 /**
