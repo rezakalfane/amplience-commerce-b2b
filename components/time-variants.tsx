@@ -14,8 +14,8 @@ const HOUR = 3_600_000;
 export async function TimeVariants({ render, label }: { render: (at?: number) => ReactNode; label?: (at: number) => Promise<string | undefined> }) {
   const time = await getTimePreview();
   if (!time) return <>{render()}</>;
-  const { markers, building, ranges } = timelineProgress(time.id);
-  if (building || markers.length === 0 || ranges.length === 0 || !ranges.every((r) => r.done)) return <>{render()}</>;
+  const { markers, ready } = await timelineProgress(time);
+  if (!ready || markers.length === 0) return <>{render()}</>;
 
   const starts = [markers[0] - HOUR, ...markers]; // an instant inside each stretch: before the first change, then each change
   const labels = await Promise.all(starts.map((at) => label?.(at)));

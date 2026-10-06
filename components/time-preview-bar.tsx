@@ -80,7 +80,7 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
       .then((r) => {
         setMarkers(r.markers);
         setRanges(r.ranges);
-        const ready = !r.building && r.ranges.length > 0 && r.ranges.every((x) => x.done);
+        const ready = r.ready;
         // Everything is preloaded: ask the server for the page once more so it comes back with one copy per time
         // state (components/time-variants.tsx); from then on, moving the slider needs no request at all.
         if (ready && !wasReady.current && r.markers.length > 0 && !timeStore.get().variants) commit(latest.current, 0);
@@ -113,10 +113,12 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
   const pct = (m: number) => (m - min) / (max - min);
 
   // Named stretches of time (editions / campaigns) from the preloaded page: bands above the slider, and the current name.
-  const bands = segments.map((seg, i) => {
+  // Names arrive with the preloaded page states; until then the stretches are known from the change points alone.
+  const stretches = segments.length ? segments : markers.length ? [{ from: 0 }, ...markers.map((m) => ({ from: m }))] : [];
+  const bands = stretches.map((seg: { from: number; label?: string }, i) => {
     const from = i === 0 ? min : seg.from;
-    const to = segments[i + 1]?.from ?? max;
-    return { ...seg, from, to, standard: i === 0 || i === segments.length - 1 };
+    const to = stretches[i + 1]?.from ?? max;
+    return { ...seg, from, to, standard: i === 0 || i === stretches.length - 1 };
   });
   const current = bands.filter((b) => b.from <= ts).at(-1)?.label;
   const short = new Intl.DateTimeFormat(INTL_LOCALE[locale], { day: "numeric", month: "short", year: "numeric" });
@@ -165,7 +167,7 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
                   return (
                     <span
                       key={`${b.from}-${i}`}
-                      title={`${b.label ?? "–"} · ${b.standard && i === 0 ? "…" : short.format(b.from)} → ${i === bands.length - 1 ? "…" : short.format(b.to)}`}
+                      title={`${b.label ?? "Edition"} · ${b.standard && i === 0 ? "…" : short.format(b.from)} → ${i === bands.length - 1 ? "…" : short.format(b.to)}`}
                       className={`absolute inset-y-0 rounded-[1px] border-r border-ink transition-opacity ${b.standard ? "bg-white/40" : TONES[i % TONES.length]} ${active ? "opacity-100" : "opacity-50 hover:opacity-90"}`}
                       style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%` }}
                     />

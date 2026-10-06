@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
 import type { Locale } from "./i18n";
-import { timelined } from "./timeline";
+import { setResolver, timelined } from "./timeline";
 import { parsePinned, VSE_COOKIE, VSE_HOST } from "./vse";
 
 /**
@@ -30,11 +30,11 @@ async function host(): Promise<string> {
 }
 
 /** The session's time preview (preview deployments only): content as of `ts`, read from a time-pinned host. */
-export async function getTimePreview(): Promise<{ ts: number; now: number; id: string } | undefined> {
+export async function getTimePreview(): Promise<{ ts: number; now: number; id: string; token: string } | undefined> {
   if (CONTENT_ENV === "production") return undefined;
   const pinned = (await cookies()).get(VSE_COOKIE)?.value;
   const parsed = pinned && VSE_HOST.test(pinned) ? parsePinned(pinned) : undefined;
-  return parsed ? { ts: parsed.ts, now: Date.now(), id: parsed.id } : undefined;
+  return parsed ? { ts: parsed.ts, now: Date.now(), id: parsed.id, token: parsed.token } : undefined;
 }
 
 /** Host id (`<vse id>`) of the configured staging host, the base for time-pinned hosts. */
@@ -143,3 +143,17 @@ export function imageOf(item?: RawImage): { url: string; alt: string } | undefin
   const l = item?.image;
   return l ? { url: `https://${MEDIA_HOST}/i/${l.endpoint}/${encodeURIComponent(l.name)}`, alt: item?.altText ?? "" } : undefined;
 }
+
+// A timeline build may need requests that another function instance registered: the request key says what to load.
+setResolver((reqKey) => {
+  const locale = reqKey.slice(reqKey.lastIndexOf(":") + 1) as Locale;
+  if (reqKey.startsWith("key:")) {
+    const key = reqKey.slice(4, reqKey.lastIndexOf(":"));
+    return (h, bg) => fetchKey(h, key, locale, bg);
+  }
+  if (reqKey.startsWith("list:")) {
+    const req = JSON.parse(reqKey.slice(5, reqKey.lastIndexOf(":"))) as FilterRequest;
+    return (h, bg) => fetchAll(h, req, locale, bg);
+  }
+  return undefined;
+});
