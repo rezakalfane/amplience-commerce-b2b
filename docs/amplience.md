@@ -13,7 +13,7 @@
 | Delivery (virtual staging, drafts) | `https://<id>.staging.bigcontent.io` (hub setting *Virtual staging environment*) |
 | GraphQL | `https://commercedemo.cdn.content.amplience.net/graphql` (not used by the storefront, handy for exploring) |
 
-![Content types in Dynamic Content](images/amp-content-types.png)
+![Content types in Dynamic Content](images/amp-content-types.jpg)
 *Development → Content types: the 21 types (the five blog schemas plus the Commerce B2B components and pages).*
 
 ## Content model
@@ -22,7 +22,7 @@ All schemas live under `https://content.commerce.com/` and are defined in `scrip
 Python helpers; `deploy_schemas.py` pushes them). **Every text field is field-level localizable**: its value is
 `{ "values": [{ "locale": "en-US", "value": "…" }, { "locale": "fr-FR", "value": "…" }] }`.
 
-![Content type schemas](images/amp-schemas.png)
+![Content type schemas](images/amp-schemas.jpg)
 *Development → Schemas, with validation levels (Content type, Slot).*
 
 | Schema | Purpose | Key fields |
@@ -41,7 +41,10 @@ Python helpers; `deploy_schemas.py` pushes them). **Every text field is field-le
 | `blogpost` | An article (`blog/<slug>`) | `account`, `title`, `authors[]`, `date`, `category`, `description`, `image`, `tags[]`, `readTime`, `content[]` (text / image / video) |
 | `author`, `image`, `text`, `video` | Shared building blocks | image: DAM `image` + localizable `altText`; text: localizable markdown |
 
-![The buying guide schema](images/amp-schema-buying-guide.png)
+![The Buying guide content type](images/amp-content-type-buying-guide.jpg)
+*Registering a content type: the schema, a label, the icon and the repositories it is available in.*
+
+![The buying guide schema](images/amp-schema-buying-guide.jpg)
 *The `buying-guide` schema in the schema editor, with the localized fields in the content form preview.*
 
 The first five (`blogpost`, `text`, `image`, `video`, `author`) pre-existed in the hub; they were **re-versioned** to make
@@ -77,16 +80,16 @@ scheduled editions that always leave exactly one hero in the slot.
 | Holiday delivery cut-off | 18 Dec 2026 | 5 Jan 2027 | "Order by 18 December for delivery before the holidays" |
 | Back to the standard hero | 5 Jan 2027 | 31 Dec 2027 | the standard home hero |
 
-![The event and its five scheduled editions](images/amp-event-editions.png)
+![The event and its five scheduled editions](images/amp-event-editions.jpg)
 *Scheduling → the event with its five scheduled editions.*
 
-![The editions on the timeline](images/amp-scheduling-timeline.png)
+![The editions on the timeline](images/amp-scheduling-timeline.jpg)
 *The same editions on the scheduling timeline.*
 
-![An edition's slot](images/amp-edition-slot.png)
+![An edition's slot](images/amp-edition-slot.jpg)
 *An edition: the home hero slot holds a locked snapshot of the hero for that period, previewed on the right.*
 
-![Previewing an edition at a date and time](images/amp-edition-preview-dialog.png)
+![Previewing an edition at a date and time](images/amp-edition-preview-dialog.jpg)
 *Date/time preview with the "Storefront staging" preview application; the storefront opens with the time banner
 ([visualizations.md](visualizations.md#time-preview-banner)).*
 

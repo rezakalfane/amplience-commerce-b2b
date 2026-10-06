@@ -49,6 +49,12 @@ so the whole site, including the slot's hero, shows what will be live then. In p
 
 ### Time preview banner
 
+![The time preview on the staging site](images/time-preview.jpg)
+*Previewing 24 Dec 2026: the "Holiday delivery cut-off" edition is live, its hero blinks with a dotted outline because it just changed, and the
+slider shows the zoomed timeline with edition bands, change markers, zoom −/+ and previous/next change.*
+
+![The time preview banner](images/time-preview-bar.jpg)
+
 While a session is pinned to a moment, every page shows a sticky **Time preview** banner (`components/time-preview-bar.tsx`):
 
 - the date and time being previewed (fixed width, so the edition tag never moves), the **name of the edition / campaign** that is live then, and a reminder that the catalog

@@ -50,8 +50,12 @@ and **Real-time preview** next to the content form, and the home hero can be **s
 <td><img src="docs/images/guide.jpg" alt="Buying guide"><br><sub>Buying guide with numbered steps and recommended products</sub></td>
 </tr>
 <tr>
-<td><img src="docs/images/amp-content-items.png" alt="Content items in Dynamic Content"><br><sub>The Commerce B2B folder in Dynamic Content</sub></td>
-<td><img src="docs/images/amp-content-types.png" alt="Amplience content types"><br><sub>The 21 content types</sub></td>
+<td><img src="docs/images/amp-content-items.jpg" alt="Content items in Dynamic Content"><br><sub>The Commerce B2B folder in Dynamic Content</sub></td>
+<td><img src="docs/images/amp-content-types.jpg" alt="Amplience content types"><br><sub>The 21 content types</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/time-preview.jpg" alt="Time preview of the staging site"><br><sub>Time preview: travel to any date; changed areas blink</sub></td>
+<td><img src="docs/images/amp-scheduling-timeline.jpg" alt="Editions on the scheduling timeline"><br><sub>The five scheduled editions on the Scheduling timeline</sub></td>
 </tr>
 </table>
 

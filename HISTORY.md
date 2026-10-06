@@ -131,3 +131,9 @@ editions the first time they are known. A React hydration warning (the date is f
 **Result:** Once a page is ready the swap takes 4-20 ms with no request (instant mode). The slower cases were pages not yet ready: the `/blog` preload
 died on Vercel because the function was stopped before it finished and a replacement build only saved at the end. Replacement builds now save their
 progress separately and resume; polling restarts a dead build; `maxDuration` is raised to 300 s.
+
+### 21. "All documentation up to date?" (screenshots)
+**Prompt:** five screenshots; four were the Scheduling screens already in the docs, one was the time preview on the staging site.
+**Result:** Audited every document against the code (broken image links, stale statements, unreferenced images). Added the time preview screenshot
+and a cropped banner strip, used the content type registration screenshot, converted the retina PNGs (about 12 MB) to 1900 px JPEGs, and added
+operations notes for the time preview (Runtime Cache, `maxDuration`, rate limits).

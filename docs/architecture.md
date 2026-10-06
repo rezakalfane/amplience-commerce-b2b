@@ -92,6 +92,8 @@ The same code runs in two content modes, chosen by one environment variable, `AM
   saves immediately on the preview site and a publish reaches production within a minute. Production could use publish
   webhooks plus tag-based revalidation for instant updates (see [decisions.md](decisions.md)).
 - **BigCommerce** reads use `fetch` with `next: { revalidate: 300 }`, except carts (`no-store`).
+- The **time preview** (preview deployments only) keeps a preloaded timeline of content changes in Vercel's **Runtime Cache**, shared by all function
+  instances, so scrubbing through time needs no Amplience requests ([visualizations.md](visualizations.md#how-time-travel-stays-fast)).
 
 ## Client Components (the only JavaScript that ships for interaction)
 
