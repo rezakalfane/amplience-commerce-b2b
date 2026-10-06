@@ -65,3 +65,13 @@ re-rendered the architecture diagram.
 ### 9. "Connect Vercel to Git?"
 **Result:** Created the Vercel project `amplience-commerce-b2b` (Production reads the CDN, Preview reads virtual staging),
 fixed the Next.js framework preset, and connected it to a GitHub repository with `main` (production) and `staging` (preview).
+
+### 10. Scheduling, visualizations and the Git hand-off
+**Result:** `schedule.py` creates an event with two Editions on the `home-hero` slot (a winter hero from 15 Nov 2026, back to the
+standard hero on 5 Jan 2027); edition slot content links to **snapshots** (`_meta.rootContentItemId`). `visualizations.py` registers
+*Preview* and *Real-time preview* on the previewable content types. Pushed `main` and `staging` to a private GitHub repository
+and connected Vercel (Production from `main`, Preview from `staging`); preview deployments are public so Amplience can frame them.
+
+### 11. "Be sure to use my rezakalfane GitHub account for all commit"
+**Result:** The repository now commits as the `rezakalfane` GitHub identity (noreply address). The first two commits used the work
+email, and Vercel did not start builds for them; new commits use the right identity.
