@@ -13,6 +13,7 @@
 |---|---|---|
 | `AMPLIENCE_HUB_NAME` | storefront, scripts | hub name (`commercedemo`); builds the CDN host and image URLs |
 | `AMPLIENCE_DELIVERY_HOST` | storefront | **empty = production** (the hub CDN). Set to the virtual staging host to read drafts and enable `/preview` |
+| `AMPLIENCE_TIME_TOKEN` | storefront (Preview scope only) | token inside a time-pinned staging domain, enables `?time=` ([visualizations.md](visualizations.md#time-preview-banner)) |
 | `AMPLIENCE_PAT` | scripts only | personal access token (Management + GraphQL asset APIs). Never set it in Vercel |
 | `AMPLIENCE_HUB_ID` | scripts only | Management API hub id |
 | `BIGCOMMERCE_STORE_HASH`, `BIGCOMMERCE_CHANNEL_ID`, `BIGCOMMERCE_STOREFRONT_TOKEN` | storefront | commerce ([bigcommerce.md](bigcommerce.md)) |
@@ -45,6 +46,7 @@ Vercel environment variables (set per scope with `vercel env add <name> producti
 |---|---|---|
 | `AMPLIENCE_HUB_NAME` | `commercedemo` | `commercedemo` |
 | `AMPLIENCE_DELIVERY_HOST` | *(not set)* | `<id>.staging.bigcontent.io` |
+| `AMPLIENCE_TIME_TOKEN` | *(not set)* | the token of a time-pinned domain |
 | `BIGCOMMERCE_*` | set | set |
 
 Each deployment reports which content it reads in the `X-Content-Environment` response header:

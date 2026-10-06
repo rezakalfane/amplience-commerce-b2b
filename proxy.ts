@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { VSE_COOKIE, VSE_HOST } from "@/lib/vse";
+import { parsePinned, pinnedHost, VSE_COOKIE, VSE_COOKIE_EXPIRED, VSE_COOKIE_OPTIONS, VSE_HOST } from "@/lib/vse";
 
 /**
  * Locale routing. English (default) has clean URLs and is rewritten internally to /en/...;
@@ -23,16 +23,34 @@ function route(request: NextRequest) {
 }
 
 /**
- * Amplience preview apps open the site with `?vse=<virtual staging domain>` (pinned to the date or edition being
- * previewed). On preview deployments only, remember it in a cookie so the whole session reads that content.
- * `?vse=reset` clears it. The cookie is partitioned and SameSite=None because the site is framed by app.amplience.net.
+ * Preview deployments can pin a session to other content:
+ *  - `?vse=<domain>`: Amplience preview apps pass a virtual staging domain frozen at the date or edition being previewed;
+ *  - `?time=<date or ISO time>`: travel to that moment yourself (needs `AMPLIENCE_TIME_TOKEN`; the banner then lets you move on);
+ *  - `?vse=reset` or `?time=now`: back to the latest saved content.
+ * Stored in a cookie so the whole session reads that content. Ignored in production.
  */
 export function proxy(request: NextRequest) {
-  const response = route(request);
-  const vse = request.nextUrl.searchParams.get("vse");
-  if (vse && process.env.AMPLIENCE_DELIVERY_HOST?.includes("staging")) {
-    if (vse === "reset") response.cookies.delete(VSE_COOKIE);
-    else if (VSE_HOST.test(vse)) response.cookies.set(VSE_COOKIE, vse, { path: "/", secure: true, sameSite: "none", partitioned: true });
+  if (!process.env.AMPLIENCE_DELIVERY_HOST?.includes("staging")) return route(request);
+  const params = request.nextUrl.searchParams;
+  const vse = params.get("vse");
+  const time = params.get("time");
+  if (!vse && !time) return route(request);
+
+  // Apply the parameter once, then redirect to the clean URL: later requests (including Server Actions posted to
+  // this URL) must not re-apply it over a time chosen in the banner.
+  const clean = request.nextUrl.clone();
+  clean.searchParams.delete("vse");
+  clean.searchParams.delete("time");
+  const response = NextResponse.redirect(clean, 307);
+  if (vse === "reset" || time === "now") {
+    response.cookies.set(VSE_COOKIE, "", VSE_COOKIE_EXPIRED);
+  } else if (vse && VSE_HOST.test(vse)) {
+    response.cookies.set(VSE_COOKIE, vse, VSE_COOKIE_OPTIONS);
+  } else if (time) {
+    const ts = Date.parse(time);
+    const base = process.env.AMPLIENCE_DELIVERY_HOST.split(".")[0];
+    const token = parsePinned(request.cookies.get(VSE_COOKIE)?.value ?? "")?.token ?? process.env.AMPLIENCE_TIME_TOKEN;
+    if (!Number.isNaN(ts) && token) response.cookies.set(VSE_COOKIE, pinnedHost(base, token, ts), VSE_COOKIE_OPTIONS);
   }
   return response;
 }

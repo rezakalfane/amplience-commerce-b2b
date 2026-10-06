@@ -203,7 +203,7 @@ faceted search with `categoryEntityId`, which includes all descendants, instead 
 ## 9. Preview and real-time preview
 
 `app/preview/` implements Amplience visualizations: a server-rendered preview of the saved item from virtual staging, and a
-real-time mode that follows the content form. See [visualizations.md](visualizations.md).
+real-time mode that follows the content form, and a **time preview** (banner with a slider) that pins the whole site to a moment in time. See [visualizations.md](visualizations.md).
 
 ## 10. Internationalization
 

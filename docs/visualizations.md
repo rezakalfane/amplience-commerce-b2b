@@ -42,10 +42,24 @@ API cannot update without the hub's DAM publishing secret, so add them in the UI
 | `Storefront staging` | `https://amplience-commerce-b2b-git-staging-rza-kalfanes-projects.vercel.app/?vse={{vse.domain}}` |
 | `Storefront local` | `http://localhost:3000/?vse={{vse.domain}}` |
 
-`vse.domain` is a virtual staging domain **frozen at the date and time (or edition) being previewed**. The storefront's
-`proxy.ts` stores it in the `amp_vse` cookie (preview deployments only, valid `*.staging.bigcontent.io` hosts only), and
-`lib/amplience.ts` reads every item from that host, so the whole site, including the slot's hero, shows what will be live then.
-Open `/?vse=reset` to go back to the default staging host. In production the parameter is ignored.
+`vse.domain` is a virtual staging domain **frozen at the date and time (or edition) being previewed**, shaped
+`<vse id>-<token>-<unix ms>.staging.bigcontent.io`. `proxy.ts` stores it in the `amp_vse` cookie (preview deployments only, valid
+`*.staging.bigcontent.io` hosts only) and redirects to the clean URL; `lib/amplience.ts` then reads every item from that host,
+so the whole site, including the slot's hero, shows what will be live then. In production the parameter is ignored.
+
+### Time preview banner
+
+While a session is pinned to a moment, every page shows a sticky **Time preview** banner (`components/time-preview-bar.tsx`):
+
+- the date and time being previewed, and a reminder that the catalog and prices are live (only the content is time-pinned);
+- a **slider** (30 days back to a year ahead, hourly steps) and a **date/time field**: moving either re-pins the session and
+  re-renders the page live through `setTimePreview` (a server action that rewrites the cookie) and `router.refresh()`;
+- **Now** (jump to the present) and **Exit time preview** (clears the cookie, back to the latest saved content).
+
+You can also enter it without Dynamic Content: `…/?time=2026-12-01T10:00` (any date `Date.parse` understands). That needs
+`AMPLIENCE_TIME_TOKEN`: the `<token>` part of a time-pinned domain, which Amplience does not expose through an API. Open
+any preview application once from Scheduling and copy the middle part of the domain in the address bar (it does not depend on
+the date). Sessions that start from Amplience reuse the token of the domain they were given. `?vse=reset` or `?time=now` clears the pin.
 
 ## Safeguards
 

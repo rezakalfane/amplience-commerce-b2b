@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import type { Locale } from "./i18n";
-import { VSE_COOKIE, VSE_HOST } from "./vse";
+import { parsePinned, VSE_COOKIE, VSE_HOST } from "./vse";
 
 /**
  * Amplience Delivery API client (read only).
@@ -26,6 +26,17 @@ async function host(): Promise<string> {
   const pinned = (await cookies()).get(VSE_COOKIE)?.value;
   return pinned && VSE_HOST.test(pinned) ? pinned : DELIVERY_HOST;
 }
+
+/** The session's time preview (preview deployments only): content as of `ts`, read from a time-pinned host. */
+export async function getTimePreview(): Promise<{ ts: number; now: number } | undefined> {
+  if (CONTENT_ENV === "production") return undefined;
+  const pinned = (await cookies()).get(VSE_COOKIE)?.value;
+  const parsed = pinned && VSE_HOST.test(pinned) ? parsePinned(pinned) : undefined;
+  return parsed ? { ts: parsed.ts, now: Date.now() } : undefined;
+}
+
+/** Host id (`<vse id>`) of the configured staging host, the base for time-pinned hosts. */
+export const STAGING_ID = DELIVERY_HOST.split(".")[0];
 
 const PARAMS = (locale: Locale) => ({ depth: "all", format: "inlined", locale: AMP_LOCALES[locale] });
 const NEXT_OPTS = CONTENT_ENV === "preview" ? { cache: "no-store" as const } : { next: { revalidate: 60 } };

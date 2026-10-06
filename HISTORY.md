@@ -83,3 +83,13 @@ a model is still unrecognised, prints the schema and fields it received. (2) Hub
 `?vse=<domain>` on preview deployments (stored in a cookie by `proxy.ts`) so Scheduling and Edition previews show the whole site at
 that date. The hub setting itself must be added in the UI (the API needs the DAM publishing secret); see
 [docs/visualizations.md](docs/visualizations.md).
+
+### 13. "Should we have a nice banner stating that it's a time preview, with a date/time control to travel in time (a slider?) live, and exit?"
+**Prompt (screenshot):** the staging site opened from a Scheduling preview app, showing the winter hero.
+**Result:** A sticky **Time preview** banner on preview deployments while the session is pinned to a moment: slider, date/time
+field, Now and Exit; content re-renders live. Time travel works because the pinned staging domain's timestamp can be swapped
+(`<id>-<token>-<unix ms>`); the token is not date-dependent but cannot be invented, so entry via `?time=` uses
+`AMPLIENCE_TIME_TOKEN` (set in Vercel Preview) and Amplience-provided sessions reuse their own. Two bugs found by testing in a
+browser: Server Action posts re-ran the proxy and re-applied a stale `?time=` (fixed by consuming the parameter with a redirect),
+and a partitioned cookie is only cleared by repeating its attributes. Verified: standard hero now, winter hero between 15 Nov 2026
+and 5 Jan 2027, standard hero again afterwards.
