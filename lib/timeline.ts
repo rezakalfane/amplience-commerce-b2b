@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { hash } from "./hash";
 import { pinnedHost } from "./vse";
 
@@ -39,7 +40,7 @@ type Plan = {
   expires: number;
   complete: boolean;
 };
-type Env = { loaders: Map<string, Loader>; plan?: Plan; building?: boolean; failed?: boolean; timer?: ReturnType<typeof setTimeout> };
+type Env = { loaders: Map<string, Loader>; plan?: Plan; building?: boolean };
 // Server Actions and page renders can load separate copies of this module (and dev reloads it), so the state is global.
 const g = globalThis as unknown as { __timeTravelEnvs?: Map<string, Env> };
 const envs = (g.__timeTravelEnvs ??= new Map<string, Env>());
@@ -97,31 +98,45 @@ export async function timelined<T>(reqKey: string, pin: Pin, load: Loader): Prom
 
   const hit = env.plan && lookup(env.plan, reqKey, pin.ts);
   if (hit !== undefined) return hit as T;
-  schedule(envKey, env, pin);
+  schedule(env, pin);
   return retry(() => load(pinnedHost(pin.id, pin.token, pin.ts), false)) as Promise<T>;
 }
 
-/** Build once the requests of the current render have all been registered; again if more requests turn up later. */
-function schedule(envKey: string, env: Env, pin: Pin) {
-  if (env.building) return;
-  const plan = env.plan;
-  const fresh = Boolean(plan && plan.expires > Date.now());
-  const covered = [...env.loaders.keys()].every((k) => plan?.keys.has(k));
-  if (fresh && covered && plan!.complete) return;
-  clearTimeout(env.timer);
-  env.timer = setTimeout(() => {
-    env.building = true;
-    build(env, pin)
-      .then(() => (env.failed = false))
-      .catch((e) => {
-        env.failed = true; // typically a rate limit: the next attempt resumes where this one stopped, after a pause
-        console.error("[timeline] build interrupted:", e instanceof Error ? e.message : e);
-      })
-      .finally(() => {
-        env.building = false;
-        schedule(envKey, env, pin); // requests registered during the build are not in it; resumes an interrupted one
-      });
-  }, env.failed ? 6000 : 400);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const covers = (env: Env) => Boolean(env.plan?.complete && env.plan.expires > Date.now() && [...env.loaders.keys()].every((k) => env.plan!.keys.has(k)));
+
+/**
+ * Build once the requests of the current render have all been registered; again if more requests turn up later.
+ * The work runs inside `after()`: on Vercel a function is frozen as soon as its response is sent, so without it the
+ * preload would only advance a little each time something woke the instance up.
+ */
+function schedule(env: Env, pin: Pin) {
+  if (env.building || covers(env)) return;
+  env.building = true;
+  const run = async () => {
+    try {
+      for (let round = 0; round < 4 && !covers(env); round++) {
+        await sleep(400); // let the render that triggered this register all of its requests
+        for (let attempt = 0; attempt < 6; attempt++) {
+          try {
+            await build(env, pin);
+            break;
+          } catch (e) {
+            // typically a rate limit: the next attempt resumes where this one stopped, after a pause
+            console.error("[timeline] build interrupted:", e instanceof Error ? e.message : e);
+            await sleep(4000);
+          }
+        }
+      }
+    } finally {
+      env.building = false;
+    }
+  };
+  try {
+    after(run);
+  } catch {
+    void run(); // outside a request scope there is nothing to keep alive
+  }
 }
 
 async function build(env: Env, pin: Pin) {

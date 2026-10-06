@@ -140,9 +140,9 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
           <button type="button" aria-label={labels.prev} title={labels.prev} disabled={prevChange === undefined} onClick={() => prevChange !== undefined && move(prevChange)} className="rounded-[3px] border border-white/30 px-2 py-1 leading-none hover:bg-white/10 disabled:opacity-30">
             ‹
           </button>
-          <div className="relative flex items-center">
+          <div className="relative flex items-center pt-3.5">
             {/* Preload progress: stretches of time whose content is already known are amber */}
-            <div aria-hidden className="pointer-events-none absolute inset-x-2 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-white/15">
+            <div aria-hidden className="pointer-events-none absolute inset-x-2 top-[calc(50%+7px)] h-1 -translate-y-1/2 overflow-hidden rounded-full bg-white/15">
               {ranges.map((r) => {
                 const from = Math.min(1, Math.max(0, pct(r.from)));
                 const to = Math.min(1, Math.max(0, pct(r.to)));
@@ -157,7 +157,7 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
             </div>
             {/* Editions / campaigns: one band per stretch of time between two content changes (hover for the name) */}
             {bands.length > 0 && (
-              <div className="absolute inset-x-2 -top-3 h-2">
+              <div className="absolute inset-x-2 top-0 h-2.5">
                 {bands.map((b, i) => {
                   const from = Math.min(1, Math.max(0, pct(b.from)));
                   const to = Math.min(1, Math.max(0, pct(b.to)));
@@ -190,7 +190,7 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
                   key={m}
                   aria-hidden
                   title={new Date(m).toLocaleString(INTL_LOCALE[locale])}
-                  className="pointer-events-none absolute top-1/2 h-3.5 w-[2px] -translate-y-1/2 rounded-full bg-white/80"
+                  className="pointer-events-none absolute top-[calc(50%+7px)] h-3.5 w-[2px] -translate-y-1/2 rounded-full bg-white/80"
                   style={{ left: `calc(8px + (100% - 16px) * ${pct(m)})` }}
                 />
               ))}
