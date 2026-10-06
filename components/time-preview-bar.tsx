@@ -32,6 +32,7 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
   const applied = useRef<{ ts: number | null; done: () => void } | undefined>(undefined);
   const latest = useRef(initial); // the time the user last asked for
   const wasReady = useRef(false);
+  const builtAt = useRef(0); // which timeline the page was last rendered from
   const { segments } = useSyncExternalStore(timeStore.subscribe, timeStore.get, timeStore.get);
   const [markers, setMarkers] = useState<number[]>([]);
   const [ranges, setRanges] = useState<{ from: number; to: number; done: boolean; changing: boolean }[]>([]);
@@ -104,6 +105,9 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
         // Everything is preloaded: ask the server for the page once more so it comes back with one copy per time
         // state (components/time-variants.tsx); from then on, moving the slider needs no request at all.
         if (ready && !wasReady.current && r.markers.length > 0 && !timeStore.get().variants) commit(latest.current, 0);
+        // A fresher timeline replaced the one the page variants came from (content changed, or a stale plan was rebuilt): re-render them.
+        if (ready && builtAt.current && r.builtAt > builtAt.current && timeStore.get().variants) commit(latest.current, 0);
+        if (ready) builtAt.current = r.builtAt;
         wasReady.current = ready;
         return !ready;
       })

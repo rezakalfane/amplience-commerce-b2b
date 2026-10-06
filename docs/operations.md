@@ -13,6 +13,7 @@
 |---|---|---|
 | `AMPLIENCE_HUB_NAME` | storefront, scripts | hub name (`commercedemo`); builds the CDN host and image URLs |
 | `AMPLIENCE_DELIVERY_HOST` | storefront | **empty = production** (the hub CDN). Set to the virtual staging host to read drafts and enable `/preview` |
+| `WARM_TOKEN` | storefront (Preview scope only) + GitHub secret | shared secret for `/api/warm` |
 | `AMPLIENCE_TIME_TOKEN` | storefront (Preview scope only) | token inside a time-pinned staging domain, enables `?time=` ([visualizations.md](visualizations.md#time-preview-banner)) |
 | `AMPLIENCE_PAT` | scripts only | personal access token (Management + GraphQL asset APIs). Never set it in Vercel |
 | `AMPLIENCE_HUB_ID` | scripts only | Management API hub id |
@@ -73,9 +74,16 @@ The token expires periodically (90 days by default). Create a new one for each o
 
 ### Time preview operations
 
+- **Warm-up after each deploy.** Building the timeline takes 1-2 minutes (nine requests per probe), so it is done before anyone asks: the GitHub Action
+  `.github/workflows/warm-timeline.yml` runs when Vercel reports a **Preview** deployment ready and calls `GET /api/warm` (header `x-warm-token`, secret `WARM_TOKEN`
+  in both GitHub and Vercel's Preview scope). The route registers the requests of a typical visit (`warmRequests()` in `lib/content.ts`: navigation, home, FAQ, guides, blog,
+  the post and guide lists, plus French navigation and home) and builds in the background. The timeline lives in the project's Runtime Cache, which all Preview deployments
+  share, so warming the new deployment also warms the staging site. The cache entry lives 4 hours; after 5 minutes of use a rebuild starts in the background and the
+  page re-renders itself when the fresher timeline replaces the old one. Run it by hand: `curl -H "x-warm-token: $WARM_TOKEN" https://<preview-url>/api/warm`, or
+  *Actions → Warm the time travel timeline → Run workflow*. The route is a 404 in production and without the token.
 - The preload runs in the background after a response (`after()`), so `app/[locale]/layout.tsx` sets `maxDuration = 300`. A heavy page (the blog) needs about a minute the first time.
-- Its state lives in the **Runtime Cache** (Observability → Runtime Cache shows it; keys start with `<staging id>:<token>`). A plan is rebuilt after 8 minutes (or when a new page brings new queries) and entries
-  expire with the 30-minute hard limit; a stale plan keeps serving until its replacement completes.
+- Its state lives in the **Runtime Cache** (Observability → Runtime Cache shows it; keys start with `<staging id>:<token>`). A plan is rebuilt after 5 minutes of use (or when a page brings queries it does not cover) and entries
+  expire after 4 hours; a stale plan keeps serving until its replacement completes.
 - Virtual staging allows 7 requests/s (350/min) for everything on that environment; the preload uses about 6/s at most and backs off on `429`. If other tools hammer staging, the preload slows down but resumes.
 - Schedules are in the hub: `python3 scripts/amplience/schedule.py` replaces the event, then the timeline refreshes itself within minutes.
 

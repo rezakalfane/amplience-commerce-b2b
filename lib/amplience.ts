@@ -83,10 +83,14 @@ async function fetchKey<T>(h: string, key: string, locale: Locale, background = 
   return ((await res.json()) as { content: T }).content;
 }
 
+/** The request keys the timeline stores things under (also used to warm it up front, see app/api/warm). */
+export const keyRequest = (key: string, locale: Locale) => `key:${key}:${locale}`;
+export const listRequest = (request: FilterRequest, locale: Locale) => `list:${JSON.stringify(request)}:${locale}`;
+
 // React `cache` de-duplicates identical reads within one render (the layout and the page both ask for navigation).
 const byKey = cache(async (key: string, locale: Locale, at?: number): Promise<unknown> => {
   const pin = await pinOf(at);
-  return pin ? timelined(`key:${key}:${locale}`, pin, (h, bg) => fetchKey(h, key, locale, bg)) : fetchKey(await host(), key, locale);
+  return pin ? timelined(keyRequest(key, locale), pin, (h, bg) => fetchKey(h, key, locale, bg)) : fetchKey(await host(), key, locale);
 });
 
 /** One content item by delivery key (e.g. `home`, `blog/my-post`), localized and with links resolved. */
@@ -94,7 +98,7 @@ export async function getByKey<T>(key: string, locale: Locale, at?: number): Pro
   return (await byKey(key, locale, at)) as T | undefined;
 }
 
-type FilterRequest = { schema: string; where?: Record<string, string>; sort?: "DESC" | "ASC" };
+export type FilterRequest = { schema: string; where?: Record<string, string>; sort?: "DESC" | "ASC" };
 
 async function fetchAll<T>(h: string, { schema, where = {}, sort }: FilterRequest, locale: Locale, background = false): Promise<T[]> {
   const filterBy = [{ path: "/_meta/schema", value: schemaId(schema) }, ...Object.entries(where).map(([path, value]) => ({ path, value }))];

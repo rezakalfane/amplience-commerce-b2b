@@ -1,4 +1,4 @@
-import { getByKey, imageOf, listBySchema, type RawImage } from "./amplience";
+import { getByKey, imageOf, keyRequest, listBySchema, listRequest, type RawImage } from "./amplience";
 import type { Locale } from "./i18n";
 import { md } from "./markdown";
 
@@ -263,6 +263,7 @@ export async function getAnnouncement(locale: Locale, audience: "guests" | "logg
 }
 
 const BLOG_FILTER = { schema: "blogpost", where: { "/account": "Commerce B2B" }, sort: "DESC" } as const;
+const GUIDE_FILTER = { schema: "buying-guide" } as const;
 
 export async function getPosts(locale: Locale, at?: number) {
   return (await listBySchema<Raw>(BLOG_FILTER, locale, at)).map((r) => post(r, locale));
@@ -274,7 +275,7 @@ export async function getPost(slug: string, locale: Locale, at?: number) {
 }
 
 export async function getGuides(locale: Locale, at?: number) {
-  const all = await listBySchema<Raw>({ schema: "buying-guide" }, locale, at);
+  const all = await listBySchema<Raw>(GUIDE_FILTER, locale, at);
   return all.map((r) => guide(r, locale)).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
@@ -287,3 +288,17 @@ export async function getSpotlights(locale: Locale) {
   return (await listBySchema<Raw>({ schema: "product-spotlight" }, locale)).map(spotlight);
 }
 
+
+/**
+ * Every request a typical visit makes (navigation, the main pages, the post and guide lists), in the form the time travel timeline
+ * stores them under. `/api/warm` registers them so the timeline is built before anyone asks for it.
+ */
+export function warmRequests(): string[] {
+  const pages = ["site/navigation", "home", "faq", "guides", "blog"];
+  return [
+    ...pages.map((k) => keyRequest(k, "en")),
+    ...["site/navigation", "home"].map((k) => keyRequest(k, "fr")),
+    listRequest(BLOG_FILTER, "en"),
+    listRequest(GUIDE_FILTER, "en"),
+  ];
+}

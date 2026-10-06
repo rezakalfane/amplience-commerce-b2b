@@ -150,3 +150,9 @@ Every card was rendered from a real item to check it (`docs/images/content-type-
 are, bands only appeared at the very end and the view fitted once on partial data. Change points are now located left to right, two at a time, so markers
 and bands arrive progressively; stretches known to contain a change pulse on the track; the view refits as they are found (until you zoom); pacing is
 about 6 requests/s (limit 7/s). Local cold build 23 s to 20 s.
+
+### 24. "Warm the timeline after each deploy. This is for demo purposes and should fly"
+**Result:** `GET /api/warm` (preview only, protected by `WARM_TOKEN`) registers the requests of a typical visit and builds the timeline in the background
+(`after()`, `maxDuration` 300). A GitHub Action calls it when a Preview deployment is ready; the Runtime Cache is shared by all preview deployments, so staging is warm too.
+Cache lifetime 4 h, rebuild after 5 min of use with the old one serving, and the page re-renders itself when a fresher timeline replaces it. Tested locally: after warming,
+home, blog and French home are instantly ready on the first visit. A tooling slip worth remembering: `path` is a special variable in zsh (tied to `$PATH`).

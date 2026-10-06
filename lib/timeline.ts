@@ -33,8 +33,8 @@ const DAY = 24 * HOUR;
 const RANGE = { before: 30 * DAY, after: 365 * DAY };
 const SAMPLES = 15;
 const CONCURRENCY = 4;
-const SOFT_TTL = 8 * 60_000; // after this a rebuild starts (the old plan keeps serving until it is replaced)
-const HARD_TTL = 30 * 60; // seconds, in the shared cache
+const SOFT_TTL = 5 * 60_000; // after this a rebuild starts on use (the old plan keeps serving until it is replaced)
+const HARD_TTL = 4 * 3600; // seconds, in the shared cache: an idle gap should not mean a cold start
 const LOCK_MS = 30_000;
 
 type Pin = { id: string; token: string; ts: number };
@@ -314,6 +314,19 @@ async function build(local: Local, pin: Pin, wanted: string[], previous: Plan | 
   }
 }
 
+/** Registers requests for this environment and builds their timeline now (called by /api/warm after a deploy). */
+export async function warmTimeline(pin: Pin, reqKeys: string[]) {
+  const local = locals.get(planKey(pin)) ?? { loaders: new Map<string, Loader>(), queued: false, building: false };
+  locals.set(planKey(pin), local);
+  for (const k of reqKeys) {
+    const l = resolver?.(k);
+    if (l) local.loaders.set(k, l);
+  }
+  const cur = (await store.get<string[]>(keysKey(pin))) ?? [];
+  await store.set(keysKey(pin), [...new Set([...cur, ...reqKeys])], HARD_TTL);
+  kickBuild(pin);
+}
+
 /**
  * Called by the status polling: a build that died (a function instance stopped mid-way) is picked up again from where
  * it left off, without waiting for someone to load a page.
@@ -337,6 +350,8 @@ export type Progress = {
   building: boolean;
   /** `changing`: the content differs between the two ends but the exact change point is not found yet. */
   ranges: { from: number; to: number; done: boolean; changing: boolean }[];
+  /** When the served plan was built: a change means a fresher timeline replaced it. */
+  builtAt: number;
   /** The preload is complete and covers every request this instance has seen: pages can be rendered per time state. */
   ready: boolean;
 };
@@ -344,7 +359,7 @@ export type Progress = {
 /** Change points, resolved ranges and build state for this staging environment (slider markers and progress bar). */
 export async function timelineProgress(pin: { id: string; token: string }): Promise<Progress> {
   const plan = await readPlan(planKey(pin));
-  if (!plan) return { markers: [], building: false, ranges: [], ready: false };
+  if (!plan) return { markers: [], building: false, ranges: [], builtAt: 0, ready: false };
   const markers = new Set<number>();
   plan.refined.forEach((r) => r?.forEach((c) => markers.add(c.t)));
   const ranges = plan.instants.slice(0, -1).map((from, i) => {
@@ -357,6 +372,7 @@ export async function timelineProgress(pin: { id: string; token: string }): Prom
     markers: [...markers].sort((a, b) => a - b),
     building: !plan.complete && Date.now() - plan.updatedAt < LOCK_MS,
     ranges,
+    builtAt: plan.builtAt,
     ready: plan.complete && seen.every((k) => plan.keys.includes(k)),
   };
 }

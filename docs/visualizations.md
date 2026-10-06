@@ -109,8 +109,10 @@ Content pinned to a moment only changes at a few instants (an Edition starting, 
    under a separate key and swapped in only when complete, so the slider never "unloads". A build interrupted by the function's
    time limit **resumes** from its stored progress, and the status polling restarts one that died. Any instance can load the
    requests another registered, because the request key says what to fetch (`setResolver`).
-7. **Time to ready.** A page whose queries are light (home, FAQ) is ready in about 25 s; the blog (36 posts over three pages per
-   probe) takes about a minute. Until then the page works, one server round trip per step; once ready, nothing is requested.
+7. **Time to ready, and warming.** A cold build takes 20-45 s for light pages (home, FAQ) and 1-2 minutes with the blog lists included (36 posts over three pages per
+   probe). Nobody should wait for that, so a GitHub Action warms the timeline after each Preview deploy (`/api/warm`, see [operations.md](operations.md#time-preview-operations)),
+   the cache entry lives 4 hours, and a stale one is rebuilt in the background while it keeps serving; the page re-renders itself when the fresh one lands. Until a
+   timeline is ready the page still works, one server round trip per step; once ready, nothing is requested.
 
 Changes shorter than the probe gap (about four weeks) can be missed. Everything here lives on preview deployments only; none of it exists in production.
 
