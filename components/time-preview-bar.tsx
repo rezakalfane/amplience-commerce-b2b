@@ -125,18 +125,18 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
   const when = new Intl.DateTimeFormat(INTL_LOCALE[locale], { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(ts);
   return (
     <div role="region" aria-label={labels.title} className="sticky top-0 z-50 border-b-2 border-amber bg-ink text-white">
-      <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-2 text-sm">
         <p className="flex items-center gap-2 whitespace-nowrap" title={labels.note}>
           <span aria-hidden className={`inline-block h-2.5 w-2.5 rounded-full bg-amber ${pending ? "animate-pulse" : ""}`} />
           <span className="font-semibold">{labels.title}</span>
           <span className="text-white/60">·</span>
-          <span className="text-white/70">{labels.hint}</span>
+          <span className="hidden text-white/70 2xl:inline">{labels.hint}</span>
           <strong className="tabular-nums">{when}</strong>
           {current && <span className="rounded-full bg-amber/20 px-2 py-0.5 text-xs font-semibold text-amber">{current}</span>}
-          <span className="hidden text-white/50 2xl:inline">· {labels.note}</span>
+          <span className="hidden text-white/50 min-[1900px]:inline">· {labels.note}</span>
         </p>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
           <button type="button" aria-label={labels.prev} title={labels.prev} disabled={prevChange === undefined} onClick={() => prevChange !== undefined && move(prevChange)} className="rounded-[3px] border border-white/30 px-2 py-1 leading-none hover:bg-white/10 disabled:opacity-30">
             ‹
           </button>
@@ -181,7 +181,7 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
               step={HOUR}
               value={Math.min(Math.max(ts, min), max)}
               onChange={(e) => move(Number(e.target.value))}
-              className="time-slider relative w-44 lg:w-64 xl:w-80"
+              className="time-slider relative w-40 lg:w-48 xl:w-64 2xl:w-72"
             />
             {markers
               .filter((m) => m > min && m < max)
@@ -203,7 +203,7 @@ export function TimePreviewBar({ ts: initial, locale, labels, now }: { ts: numbe
             aria-label={labels.hint}
             value={toInput(ts)}
             onChange={(e) => e.target.value && move(new Date(e.target.value).getTime())}
-            className="rounded-[3px] border border-white/30 bg-transparent px-2 py-1 text-white [color-scheme:dark]"
+            className="rounded-[3px] border border-white/30 bg-transparent px-1.5 py-1 text-xs text-white [color-scheme:dark]"
           />
           <button type="button" onClick={() => move(Date.now())} className="whitespace-nowrap rounded-[3px] border border-white/30 px-3 py-1 font-medium hover:bg-white/10">
             {labels.now}
