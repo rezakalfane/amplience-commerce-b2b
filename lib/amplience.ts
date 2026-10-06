@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import type { Locale } from "./i18n";
+import { timelined } from "./timeline";
 import { parsePinned, VSE_COOKIE, VSE_HOST } from "./vse";
 
 /**
@@ -28,40 +30,78 @@ async function host(): Promise<string> {
 }
 
 /** The session's time preview (preview deployments only): content as of `ts`, read from a time-pinned host. */
-export async function getTimePreview(): Promise<{ ts: number; now: number } | undefined> {
+export async function getTimePreview(): Promise<{ ts: number; now: number; id: string } | undefined> {
   if (CONTENT_ENV === "production") return undefined;
   const pinned = (await cookies()).get(VSE_COOKIE)?.value;
   const parsed = pinned && VSE_HOST.test(pinned) ? parsePinned(pinned) : undefined;
-  return parsed ? { ts: parsed.ts, now: Date.now() } : undefined;
+  return parsed ? { ts: parsed.ts, now: Date.now(), id: parsed.id } : undefined;
 }
 
 /** Host id (`<vse id>`) of the configured staging host, the base for time-pinned hosts. */
 export const STAGING_ID = DELIVERY_HOST.split(".")[0];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Virtual staging allows 7 requests/s (350/min) per environment, shared by every read. Background requests (the time
+ * travel preload, see lib/timeline.ts) are paced to 5/s to leave room for pages; pages themselves are never delayed.
+ */
+const pacer = ((globalThis as unknown as { __ampPacer?: { next: number } }).__ampPacer ??= { next: 0 });
+async function pace() {
+  const slot = Math.max(Date.now(), pacer.next);
+  pacer.next = slot + 200;
+  if (slot > Date.now()) await sleep(slot - Date.now());
+}
+
+/** `fetch` that backs off exponentially on 429 (the documented way to handle Amplience rate limits). */
+async function amp(url: string, init: RequestInit, background: boolean): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    if (background) await pace();
+    const res = await fetch(url, init);
+    if (res.status !== 429 || attempt >= 5) return res;
+    await sleep(Math.min(8000, 400 * 2 ** attempt) + Math.random() * 200);
+  }
+}
 
 const PARAMS = (locale: Locale) => ({ depth: "all", format: "inlined", locale: AMP_LOCALES[locale] });
 const NEXT_OPTS = CONTENT_ENV === "preview" ? { cache: "no-store" as const } : { next: { revalidate: 60 } };
 
 export const schemaId = (name: string) => `https://content.commerce.com/${name}`;
 
-/** One content item by delivery key (e.g. `home`, `blog/my-post`), localized and with links resolved. */
-export async function getByKey<T>(key: string, locale: Locale): Promise<T | undefined> {
+/** The session's time pin (preview deployments only), when the host is a time-pinned virtual staging domain. */
+async function pinOf(at?: number) {
+  const pin = CONTENT_ENV === "preview" ? parsePinned(await host()) : undefined;
+  // `at` reads the same environment at another instant (used to render every time state of a page in one go).
+  return pin && at !== undefined ? { ...pin, ts: at } : pin;
+}
+
+async function fetchKey<T>(h: string, key: string, locale: Locale, background = false): Promise<T | undefined> {
   const qs = new URLSearchParams(PARAMS(locale));
-  const res = await fetch(`https://${await host()}/content/key/${key}?${qs}`, NEXT_OPTS);
+  const res = await amp(`https://${h}/content/key/${key}?${qs}`, NEXT_OPTS, background);
   if (res.status === 404) return undefined;
   if (!res.ok) throw new Error(`Amplience ${res.status} for key "${key}"`);
   return ((await res.json()) as { content: T }).content;
 }
 
+// React `cache` de-duplicates identical reads within one render (the layout and the page both ask for navigation).
+const byKey = cache(async (key: string, locale: Locale, at?: number): Promise<unknown> => {
+  const pin = await pinOf(at);
+  return pin ? timelined(`key:${key}:${locale}`, pin, (h, bg) => fetchKey(h, key, locale, bg)) : fetchKey(await host(), key, locale);
+});
+
+/** One content item by delivery key (e.g. `home`, `blog/my-post`), localized and with links resolved. */
+export async function getByKey<T>(key: string, locale: Locale, at?: number): Promise<T | undefined> {
+  return (await byKey(key, locale, at)) as T | undefined;
+}
+
 type FilterRequest = { schema: string; where?: Record<string, string>; sort?: "DESC" | "ASC" };
 
-/** All items of a content type (the Filter API returns at most 12 per page, so follow the cursor). */
-export async function listBySchema<T>({ schema, where = {}, sort }: FilterRequest, locale: Locale): Promise<T[]> {
+async function fetchAll<T>(h: string, { schema, where = {}, sort }: FilterRequest, locale: Locale, background = false): Promise<T[]> {
   const filterBy = [{ path: "/_meta/schema", value: schemaId(schema) }, ...Object.entries(where).map(([path, value]) => ({ path, value }))];
   const out: T[] = [];
   let cursor: string | undefined;
   do {
-    const base = await host();
-    const res = await fetch(`https://${base}/content/filter`, {
+    const res = await amp(`https://${h}/content/filter`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -71,13 +111,24 @@ export async function listBySchema<T>({ schema, where = {}, sort }: FilterReques
         page: { size: 12, ...(cursor ? { cursor } : {}) },
       }),
       ...NEXT_OPTS,
-    });
+    }, background);
     if (!res.ok) throw new Error(`Amplience filter ${res.status} for ${schema}`);
     const body = (await res.json()) as { responses?: { content: T }[]; page?: { nextCursor?: string } };
     out.push(...(body.responses ?? []).map((r) => r.content));
     cursor = body.page?.nextCursor;
   } while (cursor);
   return out;
+}
+
+const listed = cache(async (request: string, locale: Locale, at?: number): Promise<unknown[]> => {
+  const req = JSON.parse(request) as FilterRequest;
+  const pin = await pinOf(at);
+  return pin ? timelined(`list:${request}:${locale}`, pin, (h, bg) => fetchAll(h, req, locale, bg)) : fetchAll(await host(), req, locale);
+});
+
+/** All items of a content type (the Filter API returns at most 12 per page, so follow the cursor). */
+export async function listBySchema<T>(request: FilterRequest, locale: Locale, at?: number): Promise<T[]> {
+  return (await listed(JSON.stringify(request), locale, at)) as T[];
 }
 
 // ---------------------------------------------------------------- images

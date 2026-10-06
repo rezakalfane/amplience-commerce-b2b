@@ -13,7 +13,7 @@ updates items in place (items are matched by label, assets by name).
 | `deploy_schemas.py` | creates/updates schemas, registers content types, assigns them to repositories and syncs versions |
 | `assets.py` | uploads a local file to Assets > C > Commerce B2B and publishes it |
 | `seed.py` | uploads images, creates every item (EN + FR) and publishes in dependency order |
-| `schedule.py` | seeds the scheduled hero example (event, edition, slot content) |
+| `schedule.py` | seeds the campaign calendar: an event with five scheduled editions on the home hero slot (re-running replaces it) |
 | `visualizations.py` | registers the Preview / Real-time preview visualizations on content types |
 | `data/` | the sample content (English and French) |
 | `images/` | the 62 photos and avatars the seed uploads |

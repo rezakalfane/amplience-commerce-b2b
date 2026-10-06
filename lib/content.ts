@@ -70,7 +70,7 @@ export type Announcement = {
 
 /** The components an editor can stack in a Page, in render order. */
 export type Block =
-  | { type: "hero"; hero: Hero }
+  | { type: "hero"; hero: Hero; campaign?: string }
   | { type: "text"; html: string }
   | { type: "image"; img: Img }
   | { type: "video"; title: string; src: string }
@@ -174,7 +174,7 @@ function block(c: Raw, locale: Locale): Block[] {
     case "hero-slot": {
       // A slot holds whatever hero is scheduled to be live (empty when nothing is).
       const live = list(c.slotContent)[0];
-      return live ? [{ type: "hero", hero: hero(live) }] : [];
+      return live ? [{ type: "hero", hero: hero(live), campaign: c.campaign }] : [];
     }
     case "text":
       return [{ type: "text", html: md(c.text, locale) }];
@@ -209,6 +209,12 @@ const page = (r: Raw, locale: Locale): Page => ({
   blocks: list(r.components).flatMap((c) => block(c, locale)),
 });
 
+/** Name of the stretch of time a Page is in: the campaign of its scheduled slot, else the title of its first hero. */
+export const pageLabel = (page?: Page) => {
+  const hero = page?.blocks.find((b) => b.type === "hero");
+  return hero?.type === "hero" ? (hero.campaign ?? hero.hero.title) : undefined;
+};
+
 /** What a delivered (or form-model) item renders as; used by the visualization preview. */
 export type Previewable =
   | { kind: "page"; page: Page }
@@ -233,8 +239,8 @@ export function previewable(r: Raw, locale: Locale): Previewable | undefined {
 
 // ---------------------------------------------------------------- queries
 /** A Page by delivery key: `home`, `faq`, `guides`, `blog`, or any page an editor adds. */
-export async function getPage(key: string, locale: Locale): Promise<Page | undefined> {
-  const r = await getByKey<Raw>(key, locale);
+export async function getPage(key: string, locale: Locale, at?: number): Promise<Page | undefined> {
+  const r = await getByKey<Raw>(key, locale, at);
   return r && schemaName(r) === "page" ? page(r, locale) : undefined;
 }
 
@@ -258,22 +264,22 @@ export async function getAnnouncement(locale: Locale, audience: "guests" | "logg
 
 const BLOG_FILTER = { schema: "blogpost", where: { "/account": "Commerce B2B" }, sort: "DESC" } as const;
 
-export async function getPosts(locale: Locale) {
-  return (await listBySchema<Raw>(BLOG_FILTER, locale)).map((r) => post(r, locale));
+export async function getPosts(locale: Locale, at?: number) {
+  return (await listBySchema<Raw>(BLOG_FILTER, locale, at)).map((r) => post(r, locale));
 }
 
-export async function getPost(slug: string, locale: Locale) {
-  const r = await getByKey<Raw>(`blog/${slug}`, locale);
+export async function getPost(slug: string, locale: Locale, at?: number) {
+  const r = await getByKey<Raw>(`blog/${slug}`, locale, at);
   return r && schemaName(r) === "blogpost" ? post(r, locale) : undefined;
 }
 
-export async function getGuides(locale: Locale) {
-  const all = await listBySchema<Raw>({ schema: "buying-guide" }, locale);
+export async function getGuides(locale: Locale, at?: number) {
+  const all = await listBySchema<Raw>({ schema: "buying-guide" }, locale, at);
   return all.map((r) => guide(r, locale)).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export async function getGuide(slug: string, locale: Locale) {
-  const r = await getByKey<Raw>(`guides/${slug}`, locale);
+export async function getGuide(slug: string, locale: Locale, at?: number) {
+  const r = await getByKey<Raw>(`guides/${slug}`, locale, at);
   return r && schemaName(r) === "buying-guide" ? guide(r, locale) : undefined;
 }
 

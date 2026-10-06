@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { GuideView } from "@/components/guide-view";
+import { GuideContent } from "@/components/page-content";
+import { TimeVariants } from "@/components/time-variants";
 import { getGuide } from "@/lib/content";
 import { alternatesFor, isLocale } from "@/lib/i18n";
 
@@ -14,7 +15,6 @@ export async function generateMetadata({ params }: PageProps<"/[locale]/guides/[
 export default async function GuidePage({ params }: PageProps<"/[locale]/guides/[slug]">) {
   const { locale, slug } = await params;
   if (!isLocale(locale)) notFound();
-  const guide = await getGuide(slug, locale);
-  if (!guide) notFound();
-  return <GuideView guide={guide} locale={locale} />;
+  if (!(await getGuide(slug, locale))) notFound();
+  return <TimeVariants render={(at) => <GuideContent slug={slug} locale={locale} at={at} />} />;
 }

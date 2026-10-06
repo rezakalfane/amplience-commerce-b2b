@@ -98,6 +98,7 @@ The same code runs in two content modes, chosen by one environment variable, `AM
 | Component | Purpose |
 |---|---|
 | `RealtimePreview` | preview deployments only: follows the Amplience content form |
+| `TimePreviewBar`, `TimeSwitch`, `ChangeFlash` | preview deployments only: time preview banner, instant switching between preloaded time states, blink on change ([visualizations.md](visualizations.md#how-time-travel-stays-fast)) |
 | `LocaleSwitcher` | links to the same page in the other language |
 | `MegaMenu` | hover/click product menu |
 | `PlpForm`, `SearchBox`, `PriceRange`, `SortSelect` | auto-applying filters and search-as-you-type |

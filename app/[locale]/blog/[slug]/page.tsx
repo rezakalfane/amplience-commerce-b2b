@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PostView } from "@/components/post-view";
-import { getPost, getPosts } from "@/lib/content";
+import { PostContent } from "@/components/page-content";
+import { TimeVariants } from "@/components/time-variants";
+import { getPost } from "@/lib/content";
 import { alternatesFor, isLocale } from "@/lib/i18n";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/blog/[slug]">): Promise<Metadata> {
@@ -14,10 +15,6 @@ export async function generateMetadata({ params }: PageProps<"/[locale]/blog/[sl
 export default async function PostPage({ params }: PageProps<"/[locale]/blog/[slug]">) {
   const { locale, slug } = await params;
   if (!isLocale(locale)) notFound();
-  const [post, all] = await Promise.all([getPost(slug, locale), getPosts(locale)]);
-  if (!post) notFound();
-  // Related reading: the latest other articles by the same first author.
-  const byAuthor = post.authors[0]?.name;
-  const related = all.filter((p) => p.id !== post.id && p.authors[0]?.name === byAuthor).slice(0, 3);
-  return <PostView post={post} related={related} locale={locale} />;
+  if (!(await getPost(slug, locale))) notFound();
+  return <TimeVariants render={(at) => <PostContent slug={slug} locale={locale} at={at} />} />;
 }

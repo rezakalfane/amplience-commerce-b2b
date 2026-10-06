@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { Flash } from "./flash";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getCartCount, getCategoryTree, productHref } from "@/lib/bigcommerce";
@@ -18,6 +19,7 @@ export async function AnnouncementBar({ locale }: { locale: Locale }) {
   if (!bar) return null;
   const onAmber = bar.style !== "info";
   return (
+    <Flash id="announcement" value={bar}>
     <div className={`px-4 py-2 text-center text-sm ${BAR_STYLES[bar.style] ?? BAR_STYLES.info}`}>
       <span>{bar.message}</span>
       {bar.cta?.href && (
@@ -29,6 +31,7 @@ export async function AnnouncementBar({ locale }: { locale: Locale }) {
         </Link>
       )}
     </div>
+    </Flash>
   );
 }
 

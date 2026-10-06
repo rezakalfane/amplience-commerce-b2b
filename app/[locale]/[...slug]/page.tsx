@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PageBlocks } from "@/components/page-blocks";
-import { getPage } from "@/lib/content";
+import { PageContent } from "@/components/page-content";
+import { TimeVariants } from "@/components/time-variants";
+import { getPage, pageLabel } from "@/lib/content";
 import { alternatesFor, isLocale } from "@/lib/i18n";
 
 /**
@@ -23,5 +24,8 @@ export default async function ContentPage({ params, searchParams }: PageProps<"/
   const page = await getPage(slug.join("/"), locale);
   if (!page) notFound();
   const q = typeof sp.q === "string" ? sp.q : "";
-  return <PageBlocks blocks={page.blocks} locale={locale} path={path} q={q} />;
+  return <TimeVariants
+      render={(at) => <PageContent pageKey={slug.join("/")} locale={locale} path={path} q={q} at={at} />}
+      label={async (at) => pageLabel(await getPage(slug.join("/"), locale, at))}
+    />;
 }

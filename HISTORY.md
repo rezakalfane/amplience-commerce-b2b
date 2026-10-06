@@ -93,3 +93,25 @@ field, Now and Exit; content re-renders live. Time travel works because the pinn
 browser: Server Action posts re-ran the proxy and re-applied a stale `?time=` (fixed by consuming the parameter with a redirect),
 and a partitioned cookie is only cleared by repeating its attributes. Verified: standard hero now, winter hero between 15 Nov 2026
 and 5 Jan 2027, standard hero again afterwards.
+
+### 14. "Screen can flicker while sliding" / "compact the date/time display"
+**Result:** Moves are now sent one at a time and the banner waits for the new time to arrive before sending the next; the date is a
+single compact line. Root causes found by logging DOM changes in a browser: overlapping React transitions are batched (the page only
+updated when dragging stopped) and `router.refresh()` after a cookie-setting action rendered every step twice.
+
+### 15. "A short blinking dotted border for areas that changed when time traveling"
+**Result:** Every page component, the announcement bar and article pages are wrapped in `<Flash id value>`; a content hash is compared
+with the last one seen for that area and changed areas blink with a dotted amber outline for about two seconds.
+
+### 16. "Temporarily preload/cache content for the time travel to make it super fast", "color the slider like a progress bar", "no need to reload the page each time?"
+**Prompt (link):** the Amplience API limits page.
+**Result:** `lib/timeline.ts` preloads the whole year: probe, bisect, resolve gaps progressively, with the slider filled as a progress bar,
+markers at each change and previous/next change buttons. Virtual staging allows 7 requests/s, so probing is paced, backs off on 429 and resumes.
+A bug found by logging: staging rewrites image hosts (which contain the timestamp), so every probe looked different until that text was blanked
+before comparing. Then **instant mode**: the page is rendered once per time state and the browser switches between them in 10-20 ms with no request.
+
+### 17. "Add a couple more changes in the scheduled slot" and "an overlay on the slider timeline to show editions"
+**Prompt (screenshots):** the event, an edition, the date/time preview dialog and the scheduling timeline, copied into `docs/images`.
+**Result:** The schedule now has five editions (winter check, trade deals week, winter check again, holiday delivery cut-off, back to
+standard), with two new hero banners. `hero-slot.campaign` carries each edition's name so the slider can show one named band per edition
+(hover for dates) and the current name next to the date.

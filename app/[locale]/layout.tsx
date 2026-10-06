@@ -41,6 +41,8 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[lo
               exit: t.timePreviewExit,
               updating: t.timePreviewUpdating,
               slider: t.timePreviewSlider,
+              prev: t.timePreviewPrev,
+              next: t.timePreviewNext,
             }}
           />
         )}

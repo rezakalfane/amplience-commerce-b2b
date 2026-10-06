@@ -51,15 +51,49 @@ so the whole site, including the slot's hero, shows what will be live then. In p
 
 While a session is pinned to a moment, every page shows a sticky **Time preview** banner (`components/time-preview-bar.tsx`):
 
-- the date and time being previewed, and a reminder that the catalog and prices are live (only the content is time-pinned);
-- a **slider** (30 days back to a year ahead, hourly steps) and a **date/time field**: moving either re-pins the session and
-  re-renders the page live through `setTimePreview` (a server action that rewrites the cookie) and `router.refresh()`;
-- **Now** (jump to the present) and **Exit time preview** (clears the cookie, back to the latest saved content).
+- the date and time being previewed, the **name of the edition / campaign** that is live then, and a reminder that the catalog
+  and prices are live (only the content is time-pinned);
+- a **slider** (30 days back to a year ahead, hourly steps) and a **date/time field**;
+- **‹ ›** to jump to the previous / next change, **Now**, and **Exit time preview** (clears the pin, back to the latest saved content);
+- on the slider, a **progress fill** while the time states are preloaded, then **change markers** and one **named band per
+  edition** (hover for its name and dates);
+- areas whose content changes **blink with a dotted amber outline** for about two seconds (`components/change-flash.tsx`).
 
 You can also enter it without Dynamic Content: `…/?time=2026-12-01T10:00` (any date `Date.parse` understands). That needs
 `AMPLIENCE_TIME_TOKEN`: the `<token>` part of a time-pinned domain, which Amplience does not expose through an API. Open
 any preview application once from Scheduling and copy the middle part of the domain in the address bar (it does not depend on
 the date). Sessions that start from Amplience reuse the token of the domain they were given. `?vse=reset` or `?time=now` clears the pin.
+
+### How time travel stays fast
+
+Content pinned to a moment only changes at a few instants (an Edition starting, a slot being published), so the storefront
+**preloads the timeline** instead of asking Amplience for every slider step.
+
+1. **Timeline** (`lib/timeline.ts`). The first pinned render registers the requests it makes (navigation, the page, lists).
+   In the background the server probes the slider's range at 15 instants and, wherever two neighbouring probes differ,
+   bisects down to the hour to find the exact change point. One probe loads *all* registered requests from one time-pinned
+   host. The staging host rewrites some links to its own domain (which contains the timestamp), so that text is blanked
+   before comparing. A gap between two probes becomes **resolved** as soon as it is known and is answered from memory at once,
+   even while the rest is still loading; that is the progress fill. The change points are the slider markers and the
+   previous / next buttons.
+2. **Rate limits.** Virtual staging allows **7 requests per second (350 per minute)**, shared by every staging read, and answers
+   `429` beyond that ([limits](https://amplience.com/developers/docs/apis/limits/)). Background probes are paced to 5 per second, run four at a
+   time, back off exponentially on `429` (`amp()` in `lib/amplience.ts`) and a build interrupted by a limit **resumes** where it
+   stopped. Pages themselves are never delayed. A typical build (5 changes, 2 requests per probe) takes about 25 seconds.
+3. **Instant mode** (`components/time-variants.tsx`, `time-switch.tsx`). Once the timeline is complete, the server renders the
+   page **once per stretch of time between two changes** (every data getter takes an optional `at`) and sends them together. The
+   browser shows the variant that matches the slider, so moving the slider needs **no request**: a swap takes 10–20 ms. The other
+   variants wait in a hidden container so their images are already loaded. The banner only syncs the server (cookie, header,
+   announcement) 700 ms after you stop moving. Until the timeline is complete the slider falls back to one server round trip per
+   step (about 400 ms once warm).
+4. **Edition names.** The storefront cannot read edition names (they live in the Management API), so the scheduler stores the
+   name in the slot content: `hero-slot.campaign`. `pageLabel()` reads it, and `TimeVariants` hands one label per stretch to the banner.
+5. **Blinking.** Each page component is wrapped in `<Flash id value>`; a hash of its content is compared with the last one seen for
+   the same area, even across variants, so only areas that really changed blink. An area that appears right after you moved the
+   time (a hero whose slot just got content) blinks too; first paint never does.
+
+Changes shorter than the probe gap (about four weeks) can be missed, and a timeline expires after five minutes of the pin
+being unused. Everything here lives on preview deployments only; none of it exists in production.
 
 ## Safeguards
 
@@ -67,6 +101,7 @@ the date). Sessions that start from Amplience reuse the token of the domain they
 - The staging host and content id are validated, so the route cannot be used to fetch arbitrary URLs.
 - `Content-Security-Policy: frame-ancestors` allows only `https://*.amplience.net`.
 - Preview deployments are read-only: they never write to Amplience.
+- The time preview (cookie, server action, timeline) is inert in production: `?time=` / `?vse=` are ignored and the action throws.
 
 ## Using it
 

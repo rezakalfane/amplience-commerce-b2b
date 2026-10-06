@@ -88,6 +88,25 @@ parallel implementation of every page).
 **Decision.** Components render plain HTML with no per-field edit attributes; editors edit in the content form beside the preview.
 **Why.** Smaller HTML and one rendering path for visitors and editors.
 
+### D29. Time travel preloads a timeline of changes instead of caching per instant
+**Decision.** In a time preview the server finds the instants where content changes (probe, then bisect to the hour) and keeps
+one copy per stretch; gaps are usable as soon as they are known (`lib/timeline.ts`).
+**Why.** Every instant is a different virtual staging host (new DNS and TLS), so caching per timestamp never hits; virtual staging
+is limited to 7 requests/s, so exhaustive sampling would be throttled. Content changes at a handful of instants, so a few dozen
+paced probes describe the whole year, and the same data gives markers, previous/next change and edition bands.
+**Trade-off.** A change shorter than the probe gap (about four weeks) can be missed; the build takes about 25 seconds on first use.
+
+### D30. Preloaded time states are rendered up front and switched in the browser
+**Decision.** Once the timeline is complete, the server renders each stretch of time once and the browser shows the one matching
+the slider (`TimeVariants`, `TimeSwitch`); the server only syncs after the user pauses.
+**Why.** A server round trip per slider step (about 400 ms even when warm) feels sluggish and flickers; switching takes 10–20 ms.
+**Rejected.** Transitions around each action (React batches overlapping ones and the page only updates when dragging stops);
+`router.refresh()` after the action (a second render per step).
+
+### D31. Edition names travel in the slot content
+**Decision.** `hero-slot.campaign` holds the name, set by the scheduler.
+**Why.** The storefront has no Management API access (and must not hold the PAT), and the Delivery API does not expose edition names.
+
 ## Catalog
 
 ### D15. A category lists its subcategories' products

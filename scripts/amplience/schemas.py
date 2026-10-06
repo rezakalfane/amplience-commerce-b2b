@@ -353,8 +353,12 @@ S["site-navigation"] = base(
 
 S["hero-slot"] = base(
     "hero-slot", "Hero slot", "A schedulable slot holding a hero banner (use Editions to plan which hero shows when)",
-    {"slotContent": links(["hero-banner"], "Content", "The hero banner shown while this slot is live", 0, 1)},
-    [], ["slotContent"],
+    {
+        "slotContent": links(["hero-banner"], "Content", "The hero banner shown while this slot is live", 0, 1),
+        "campaign": {"title": "Campaign", "description": "Name of the campaign or edition; shown on the time preview timeline",
+                     "type": "string", "maxLength": 80},
+    },
+    ["campaign"], ["slotContent"],
 )
 
 S["page"] = base(

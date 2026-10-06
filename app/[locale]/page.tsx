@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PageBlocks } from "@/components/page-blocks";
-import { getPage } from "@/lib/content";
+import { PageContent } from "@/components/page-content";
+import { TimeVariants } from "@/components/time-variants";
+import { getPage, pageLabel } from "@/lib/content";
 import { alternatesFor, isLocale } from "@/lib/i18n";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
@@ -17,5 +18,8 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   if (!isLocale(locale)) notFound();
   const page = await getPage("home", locale);
   if (!page) notFound();
-  return <PageBlocks blocks={page.blocks} locale={locale} />;
+  return <TimeVariants
+      render={(at) => <PageContent pageKey="home" locale={locale} at={at} />}
+      label={async (at) => pageLabel(await getPage("home", locale, at))}
+    />;
 }

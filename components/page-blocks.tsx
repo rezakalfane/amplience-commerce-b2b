@@ -4,6 +4,7 @@ import { CategoryTiles } from "@/components/category-tiles";
 import { FaqItem } from "@/components/faq-list";
 import { GuideCard } from "@/components/guide-card";
 import { Hero } from "@/components/hero";
+import { Flash } from "@/components/flash";
 import { PostGrid } from "@/components/post-card";
 import { SpotlightCard } from "@/components/spotlight-card";
 import { getBcProducts } from "@/lib/bigcommerce";
@@ -19,23 +20,35 @@ type Props = {
   path?: string;
   /** Search text from the URL (`?q=`), used by the post listing. */
   q?: string;
+  /** Time preview: render the lists as they are at this instant (see components/time-variants.tsx). */
+  at?: number;
 };
 
 /** Renders the components stacked in a Page, top to bottom. Consecutive feature blocks share one band. */
-export async function PageBlocks({ blocks, locale, path = "/", q = "" }: Props) {
+export async function PageBlocks({ blocks, locale, path = "/", q = "", at }: Props) {
   const groups: (Block | Feature[])[] = [];
   for (const b of blocks) {
     const last = groups[groups.length - 1];
     if (b.type === "feature" && Array.isArray(last)) last.push(b);
     else groups.push(b.type === "feature" ? [b] : b);
   }
+  // Keys follow the kind of block (not its position), so a block that appears or disappears does not make its
+  // neighbours look changed while time traveling.
+  const seen: Record<string, number> = {};
+  const keyOf = (g: Block | Feature[]) => {
+    const kind = Array.isArray(g) ? "features" : g.type;
+    return `${kind}#${(seen[kind] = (seen[kind] ?? -1) + 1)}`;
+  };
   return (
     <>
-      {await Promise.all(
-        groups.map((g, i) =>
-          Array.isArray(g) ? <FeatureBand key={i} blocks={g} /> : <BlockView key={i} block={g} locale={locale} path={path} q={q} />,
-        ),
-      )}
+      {groups.map((g) => {
+        const id = keyOf(g);
+        return (
+          <Flash key={id} id={id} value={g}>
+            {Array.isArray(g) ? <FeatureBand blocks={g} /> : <BlockView block={g} locale={locale} path={path} q={q} at={at} />}
+          </Flash>
+        );
+      })}
     </>
   );
 }
@@ -65,7 +78,7 @@ function FeatureBand({ blocks }: { blocks: Feature[] }) {
   );
 }
 
-async function BlockView({ block, locale, path, q }: { block: Block; locale: Locale; path: string; q: string }) {
+async function BlockView({ block, locale, path, q, at }: { block: Block; locale: Locale; path: string; q: string; at?: number }) {
   const t = getMessages(locale);
   switch (block.type) {
     case "hero":
@@ -150,7 +163,7 @@ async function BlockView({ block, locale, path, q }: { block: Block; locale: Loc
       ) : null;
 
     case "postListing": {
-      const all = await getPosts(locale);
+      const all = await getPosts(locale, at);
       const needle = q.trim().toLowerCase();
       const posts = needle ? all.filter((p) => `${p.title} ${p.description ?? ""}`.toLowerCase().includes(needle)) : all;
       return (
@@ -170,7 +183,7 @@ async function BlockView({ block, locale, path, q }: { block: Block; locale: Loc
     }
 
     case "guideListing": {
-      const guides = await getGuides(locale);
+      const guides = await getGuides(locale, at);
       return (
         <section className="page section">
           <div className="grid gap-x-8 gap-y-12 md:grid-cols-3">

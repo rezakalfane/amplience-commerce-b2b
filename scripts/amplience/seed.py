@@ -190,7 +190,7 @@ def main():
 
     # ---- hero slot (schedulable): holds the default home hero; see schedule.py for a scheduled alternative
     home_slot = items.upsert("hero-slot", "Home hero slot", {
-        "_meta": {"deliveryKey": "slots/home-hero"},
+        "_meta": {"deliveryKey": "slots/home-hero"}, "campaign": "Standard hero",
         "slotContent": [clink("hero-banner", hero["home"])]}, repo=SLOTS_REPO)
 
     # ---- components and pages

@@ -31,7 +31,7 @@ and **Real-time preview** next to the content form, and the home hero can be **s
 | **Cart** | Add to cart, dynamic quantity stepper with instant totals, remove, hosted checkout hand-off |
 | **Content** | Blog (36 articles, 6 authors), 6 buying guides, 15 FAQs, banners, announcement bar, navigation |
 | **Languages** | English and French: routes, UI text, prices, dates and field-level localized Amplience content |
-| **Editing** | Preview and Real-time preview visualizations; Production and Preview deployments on Vercel |
+| **Editing** | Preview and Real-time preview visualizations; **time preview** (slider with preloaded states, edition bands, blink on change); Production and Preview deployments on Vercel |
 | **Design** | "Workbench": light theme, 1100px pages, photography-led |
 
 ## Screenshots
