@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: Preview deployment URL to call (default: the staging site)
+        description: "Preview deployment URL to call (leave empty for the staging site)"
         required: false
 
 jobs:
