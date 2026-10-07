@@ -95,7 +95,6 @@ The token expires periodically (90 days by default). Create a new one for each o
 - [ ] Preview applications added in the hub (Settings → Preview) for Scheduling and Edition previews ([visualizations.md](visualizations.md#previewing-the-whole-site-from-scheduling-preview-applications)).
 - [ ] Replace all fictional sample content (authors, article text, FAQ policies, promotions, contact details).
 - [ ] Add a **publish webhook** (Amplience → a Next.js route that calls `revalidateTag`) and cache Amplience reads with tags for instant updates.
-- [ ] Add BigCommerce **Store Translations** for French product content (or accept English product names).
 - [ ] Decide the B2B account story: customer login, company price lists, quotes ([bigcommerce.md](bigcommerce.md)).
 - [ ] `sitemap.xml` (the Hierarchy / Filter API can list every delivery key), `robots.txt`, canonical host, analytics, error monitoring.
 - [ ] Review the cookie notice requirements for the cart cookie (`bc_cart_id`, strictly necessary).
@@ -128,7 +127,7 @@ The token expires periodically (90 days by default). Create a new one for each o
 ## Known limitations
 
 - No buyer sign-in, per-company pricing, quotes or order history (B2B Edition is not yet integrated).
-- Product text is English only.
+- Product, category and custom-field text is translated only where BigCommerce has Store Translations (French, plus any other locale added the same way).
 - Production reads are cached for 60 seconds; there is no webhook-driven revalidation yet.
 - The Filter API returns 12 items per request, so listings of hundreds of items need pagination in the UI.
 - Search on the blog is a simple in-memory text match over all posts.
