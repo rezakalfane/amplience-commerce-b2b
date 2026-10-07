@@ -59,12 +59,27 @@ with no code change. Components an editor can stack:
 | `post-grid` / `post-listing` | chosen posts / all posts with search |
 | `faq-section` | FAQs grouped by topic in accordions |
 
-### The catalog catch-all route
+### The catalog routes
 
-`app/[locale]/products/[...slug]/page.tsx` serves two kinds of URL. BigCommerce paths look like
-`/products/<category>/<subcategory>/<product-slug>/`, so the route rebuilds the BigCommerce path from the slug and
-dispatches on depth: **one or two segments are categories, three or more are products**. If the guess is wrong the other
-interpretation is tried, and `notFound()` is raised if neither resolves.
+BigCommerce translates catalog URLs, so the catalog lives at `/products/...` in English and `/fr/produits/...` in French (the root category
+"Products" is "Produits" in French, and every category and product slug below it is translated too). The route files are
+`app/[locale]/products/page.tsx` (listing) and `app/[locale]/products/[...slug]/page.tsx` (category or product). Each language's catalog root
+is configured in `CATALOG_ROOT` (`lib/i18n.ts`); `proxy.ts` rewrites another root (`/fr/produits/...`) onto `/products/...` and passes the requested
+root in the `x-catalog-root` header, read by `requestedCatalogRoot()` (`lib/catalog-route.ts`). A generic `[root]` segment is not used here because
+`app/[locale]/[...slug]` serves the CMS-created Pages and a `[root]` route would shadow them.
+
+- The page rebuilds the BigCommerce path from `root` and the slug (`/produits/batteries-automobiles/...`) and resolves it **in the page's
+  language**: a path only resolves in its own language. **One or two segments are categories, three or more are products.** If the guess is
+  wrong the other interpretation is tried, and `notFound()` is raised if neither resolves.
+- `ensureCatalogRoot()` (`lib/catalog-route.ts`): another language's root (an old or content-stored link such as `/fr/products/...`) is
+  **permanently redirected** to the same page in this language; any other first segment is a 404.
+- Product and category reads include `locales`, BigCommerce's list of the page's path in every language. It feeds `hreflang` / canonical
+  tags (`alternatesFromPaths`) and the language switcher.
+- **Language switcher:** on a catalog page it links to `/api/switch-locale?to=fr&path=<current path>`, which looks up the page's path in the
+  target language and redirects (307), keeping the other query parameters and dropping attribute filters (`f.*`, whose values are translated).
+  Other pages just swap the `/fr` prefix.
+- `localePath(locale, "/products")` (the bare catalog link used in navigation, footer, buttons and breadcrumbs) maps to the language's root.
+  Tiles and the mega menu use the translated paths from the category tree; tile photos are matched by category id.
 
 ## 3. Home page
 

@@ -57,7 +57,8 @@ maintain for it.
 ### D9. Same delivery key in every language
 **Decision.** `/fr/blog/<english-slug>`: one item, one delivery key, two locales inside it.
 **Why.** The language switcher is exact (swap the prefix) and field-level localization keeps both languages in one item.
-**Trade-off.** Less SEO benefit than translated slugs; Amplience supports localized delivery keys if that is needed later.
+**Trade-off.** Less SEO benefit than translated slugs for content pages; Amplience supports localized delivery keys if that is needed later.
+**Catalog exception.** The catalog uses BigCommerce's translated URLs (`/products/...`, `/fr/produits/...`; see D11), with a language switcher that looks the page up.
 
 ### D10. Field-level localization with English fallback
 **Decision.** Text fields are localizable (`values: [{ locale, value }]`) and every read asks for `locale=fr-FR,en-US`.
@@ -65,14 +66,13 @@ maintain for it.
 **Rejected.** One item per language in per-locale repositories (duplicated structure; changing an image means editing twice).
 **Consequence.** The five existing hub schemas were re-versioned to make their text localizable.
 
-### D11. Product text comes from BigCommerce Store Translations; URLs stay shared
-**Decision.** Do not translate product names or copy in code. Read translated content from the Storefront API with an
-`@shopperPreferences(locale: "fr")` directive (it ignores `Accept-Language`), and keep the English slugs in every language by
-restoring each `path` from the default-locale catalog (see [bigcommerce.md](bigcommerce.md)).
-**Why.** Product data belongs to BigCommerce. Translated URL paths (`/produits/...`) would need route, language-switcher and hreflang
-changes (reverses D9) and a product path only resolves in its own language.
-**Consequence.** A French product page costs one extra read (resolve the English path, then the translated content by id), and French
-listings add one cached lookup of English paths.
+### D11. Product text and URLs come from BigCommerce Store Translations
+**Decision.** Do not translate product names, copy or paths in code. Read translated content from the Storefront API with an
+`@shopperPreferences(locale: "fr")` directive (it ignores `Accept-Language`) and use the translated paths it returns (see [bigcommerce.md](bigcommerce.md)).
+**Why.** Product data belongs to BigCommerce, including its URLs; a translated path only resolves in its own language, so pages resolve the
+path of the page's language.
+**Consequence.** The catalog root segment per language is configuration (`CATALOG_ROOT`); a language switch on a catalog page costs one
+redirect through `/api/switch-locale`; filter values are translated, so attribute filters are not carried across languages.
 
 ## Editing
 
@@ -197,6 +197,6 @@ are `noindex` (Vercel) and carry only content that editors have already saved.
 ## Open questions
 
 - Will buyers **sign in** (B2B Edition companies, price lists, quotes)? Today "your negotiated prices" is aspirational copy.
-- Do we want **translated slugs** for French SEO (reverses D9)?
+- Should attribute filters survive a language switch (their values are translated, so they are dropped today)? Should content pages get localized delivery keys too?
 - Should the category tiles move into Amplience (a `category-tiles` component exists; it currently reads the BigCommerce tree)?
 - Publish **webhooks and tag-based caching** for Amplience reads at production traffic.

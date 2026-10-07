@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { localeOfCatalogRoot } from "@/lib/i18n";
 import { parsePinned, pinnedHost, VSE_COOKIE, VSE_COOKIE_EXPIRED, VSE_COOKIE_OPTIONS, VSE_HOST } from "@/lib/vse";
 
 /**
@@ -9,7 +10,19 @@ function route(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const first = pathname.split("/")[1];
 
-  if (first === "fr") return NextResponse.next();
+  // Catalog URLs are translated (/products/..., /fr/produits/...). The route lives at /products, so another root is rewritten onto it
+  // and the requested root travels in a header (see requestedCatalogRoot in lib/catalog-route.ts).
+  const catalogRewrite = (prefix: string, rest: string) => {
+    const seg = rest.split("/")[1];
+    if (!seg || seg === "products" || !localeOfCatalogRoot(seg)) return null;
+    const url = request.nextUrl.clone();
+    url.pathname = `${prefix}/products${rest.slice(seg.length + 1)}`;
+    const headers = new Headers(request.headers);
+    headers.set("x-catalog-root", seg);
+    return NextResponse.rewrite(url, { request: { headers } });
+  };
+
+  if (first === "fr") return catalogRewrite("/fr", pathname.slice(3) || "/") ?? NextResponse.next();
 
   if (first === "en") {
     const url = request.nextUrl.clone();
@@ -17,6 +30,8 @@ function route(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  const rewritten = catalogRewrite("/en", pathname);
+  if (rewritten) return rewritten;
   const url = request.nextUrl.clone();
   url.pathname = `/en${pathname === "/" ? "" : pathname}`;
   return NextResponse.rewrite(url);
