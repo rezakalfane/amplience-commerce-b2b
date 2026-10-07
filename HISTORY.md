@@ -170,3 +170,8 @@ the warm call had not finished minutes later (it only completed after a visit re
 
 ### Translated catalog URLs and a language switcher that finds the matching page
 **Result:** Ported from the Storyblok storefront. Catalog URLs are BigCommerce's translated paths (`/products/...`, `/fr/produits/...`; `CATALOG_ROOT` per language). Because `app/[locale]/[...slug]` serves the CMS-created Pages, a generic `[root]` route would shadow them, so the static `/products` route is kept and `proxy.ts` rewrites each language's root onto it with an `x-catalog-root` header. `locales` feeds hreflang and canonical tags, `/api/switch-locale` redirects a catalog page to its counterpart in the other language (search and sort kept, translated attribute filters dropped), another language's root redirects permanently, and the bare `/products` link, tiles and mega menu use translated paths.
+
+### Cart subtotal updated several times
+**Prompt:** When adding to cart, the subtotal is updated multiple times (found while building the Contentful version, then ported here).
+
+**Result:** One click on "+" in the cart showed the optimistic total, then the previous server total, then the new one (e.g. £396.80, £198.40, £396.80): when the save ended, the subtotal fell back to the server value in the props, which is still the old one until the refresh lands. `cart-view.tsx` now keeps the optimistic total until fresh server data has arrived (a `synced` flag reset on every change and set again when the props update with nothing pending). Verified in the Contentful project with a headless browser (one click: one update; three quick clicks: a steady climb); the identical file was copied here (it was byte-identical to the old version; `tsc` and `eslint` pass).
