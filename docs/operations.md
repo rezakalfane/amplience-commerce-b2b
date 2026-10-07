@@ -82,6 +82,7 @@ The token expires periodically (90 days by default). Create a new one for each o
   share, so warming the new deployment also warms the staging site. The cache entry lives 4 hours; after 5 minutes of use a rebuild starts in the background and the
   page re-renders itself when the fresher timeline replaces the old one. Run it by hand: `curl -H "x-warm-token: $WARM_TOKEN" https://<preview-url>/api/warm`, or
   *Actions → Warm the time travel timeline → Run workflow*. The route is a 404 in production and without the token.
+- **Scheduled re-warm (added 7 October 2026).** The cache entry lives 4 hours and the deploy-time warm-up is the only other trigger, so the workflow also runs every 3 hours (`schedule`, minute 17) against the staging site; before, a demo opened more than 4 hours after the last deploy waited 1-2 minutes for the rebuild.
 - The preload runs in the background after a response (`after()`), so `app/[locale]/layout.tsx` sets `maxDuration = 300`. A heavy page (the blog) needs about a minute the first time.
 - Its state lives in the **Runtime Cache** (Observability → Runtime Cache shows it; keys start with `<staging id>:<token>`). A plan is rebuilt after 5 minutes of use (or when a page brings queries it does not cover) and entries
   expire after 4 hours; a stale plan keeps serving until its replacement completes.

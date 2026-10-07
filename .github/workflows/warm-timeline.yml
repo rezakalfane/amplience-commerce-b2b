@@ -4,6 +4,9 @@ name: Warm the time travel timeline
 # which every Preview deployment shares, so warming the deployment that just became ready also warms the staging site. See docs/operations.md.
 on:
   deployment_status:
+  # The timeline lives 4 hours in the Runtime Cache (HARD_TTL in lib/timeline.ts); warm it again before it expires so the first visitor never waits.
+  schedule:
+    - cron: "17 */3 * * *"
   workflow_dispatch:
     inputs:
       url:
@@ -13,7 +16,7 @@ on:
 jobs:
   warm:
     # Only for successful Preview deployments (or a manual run)
-    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && contains(github.event.deployment.environment, 'Preview'))
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || (github.event.deployment_status.state == 'success' && contains(github.event.deployment.environment, 'Preview'))
     runs-on: ubuntu-latest
     steps:
       - name: Call /api/warm
