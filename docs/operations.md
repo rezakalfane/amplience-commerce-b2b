@@ -38,7 +38,7 @@ base URL to work on the storefront with the content form open ([visualizations.m
 | Site | URL | Branch | Reads | Purpose |
 |---|---|---|---|---|
 | **Production** | https://amplience-commerce-b2b.vercel.app | `main` | published content (CDN) | the live site |
-| **Staging / Preview** | https://amplience-commerce-b2b-git-staging-rza-kalfanes-projects.vercel.app | `staging` (and any other branch) | latest saved content (virtual staging) | review changes and host the visualizations |
+| **Staging / Preview** | https://amplience-commerce-b2b-git-staging-rza-kalfanes-projects.vercel.app | `staging` (rebuilt from `main` by `.github/workflows/sync-staging.yml`; any other branch also gets a preview) | latest saved content (virtual staging) | review changes and host the visualizations |
 | **Local** | http://localhost:3000 | working copy | virtual staging | development |
 
 Vercel environment variables (set per scope with `vercel env add <name> production|preview`):
